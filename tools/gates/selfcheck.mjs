@@ -35,12 +35,21 @@ const skills = new Set(SKILLS_DIR ? readdirSync(SKILLS_DIR).map((f) => f.replace
 // Which backticked paths this repo is expected to actually contain. Studio docs
 // refer to project-layer paths constantly — those exist in project repos, not
 // here — and reporting them would train everyone to ignore this check.
+// The studio's board holds only tasks, a backlog and an andon log; the rest of the
+// board it describes — decisions, drift, playtests, the trust ledger — belongs to
+// projects. Naming the three it has keeps its own cards under the same check a
+// project's cards get, which is how the blocker-path defect stayed hidden: the
+// studio never checked a `board/` path, so only the first project ever hit it.
 const OWN_PATHS = IS_STUDIO
-  ? /^(docs\/(00-charter|01-framework|02-roles|03-gates|04-grokbot|05-studio)|templates|playbooks|tools)\//
+  ? /^(docs\/(00-charter|01-framework|02-roles|03-gates|04-grokbot|05-studio)|templates|playbooks|tools)\/|^board\/(tasks\/|backlog\.md|andon\.md)/
   : /^(docs|board)\//;
 // Paths a project has and the studio does not, even though the parent directory
 // is shared. The studio has no vision document and does not verify its own mirror.
 const PROJECT_ONLY = /^(docs\/00-charter\/vision\.md|tools\/studio-sync\.mjs)$/;
+// Paths named precisely because they do not exist. Every task card's escalation
+// line names the blocker report to write at the third failed attempt, and a card
+// whose blocker report already exists is a card that is already in trouble.
+const NOT_YET = /^board\/blockers\//;
 
 /**
  * Iron law one, mechanised.
@@ -109,7 +118,7 @@ for (const f of files) {
     const p = m[1].replace(/^@studio\//, '');
     if (/[*<>]/.test(p)) continue;
     if (/XXX|YYY|\bNN\b/.test(p)) continue;
-    if (!OWN_PATHS.test(p) || PROJECT_ONLY.test(p)) continue;
+    if (!OWN_PATHS.test(p) || PROJECT_ONLY.test(p) || NOT_YET.test(p)) continue;
     if (!existsSync(join(ROOT, p))) problems.push(`${rel}: references a path that does not exist: ${p}`);
   }
 
