@@ -94,7 +94,9 @@ function main() {
   const entries = diffEntries(baseRef);
   const card = taskId ? dispatchedCard(baseRef, taskId) : null;
 
-  console.log(`lane gate · bot=${botCode} · task=${taskId} · table=${table} · ${entries.length} path(s)`);
+  console.log(
+    `lane gate · bot=${botCode} · ${taskId ? `task=${taskId}` : 'board branch'} · table=${table} · ${entries.length} path(s)`
+  );
   if (entries.length === 0) return 0;
 
   const overrides = declaredPaths(card, OVERRIDE_LABEL);

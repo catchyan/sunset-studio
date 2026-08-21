@@ -1,0 +1,10 @@
+ CHANGELOG.md                         | 44 ++++++++++++++++++++++++++++++++++++
+ docs/00-charter/constitution.md      |  2 +-
+ docs/03-gates/gates.md               | 19 ++++++++++++----
+ docs/04-grokbot/setup.md             |  5 ++--
+ docs/04-grokbot/skills/sop-review.md | 12 ++++++++++
+ docs/04-grokbot/skills/sop-task.md   |  5 ++--
+ tools/gates/envelope-check.mjs       | 14 +++++++++---
+ tools/gates/lane-check.mjs           |  4 +++-
+ tools/mount.mjs                      |  2 +-
+ 9 files changed, 93 insertions(+), 14 deletions(-)

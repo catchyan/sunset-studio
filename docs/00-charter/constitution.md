@@ -88,7 +88,7 @@ skimming, and the review gate silently becomes decorative while still reporting 
 
 An agent may not approve, merge, or declare done anything it produced. Author and
 reviewer are different agents, named on the task card before the work starts, and the
-reviewer says so in the pull request timeline: a line reading `APPROVED-BY: <their code>`.
+reviewer says so in a pull request review: a line reading `APPROVED-BY: <their code>`.
 
 The same rule applies to the repository itself. A diff that changes the workflow, the gate
 scripts, or an ownership table is judged by the very files it changes, because GitHub runs

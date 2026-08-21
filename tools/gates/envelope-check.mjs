@@ -94,6 +94,10 @@ function labels() {
  * request — and its identity would prove nothing if it could. A written line in
  * the timeline is weaker than a signature and stronger than the alternative,
  * which was a field the author fills in on their own card.
+ *
+ * Both reviews and plain comments are read, but only a review re-runs this
+ * workflow. A plain comment is collected on the next run and, if there is no
+ * next run, by nobody.
  */
 function approvals() {
   const file = process.env.PR_APPROVALS_FILE;
@@ -111,8 +115,12 @@ function checkApproval(botCode, card, changed) {
   if (independent.length === 0) {
     fail.push(
       'Nobody has approved this pull request.\n' +
-        `    The reviewer comments a line reading "APPROVED-BY: <their code>" — anyone except\n` +
-        `    ${[...self].join(' or ')}. Approvals seen: ${given.length ? given.join(', ') : 'none'}.`
+        '    The reviewer submits a review — not a plain comment — whose body holds a line\n' +
+        '    reading "APPROVED-BY: <their code>":\n' +
+        `      gh pr review <n> --comment --body "APPROVED-BY: <their code>"\n` +
+        `    Anyone except ${[...self].join(' or ')}. Approvals seen: ${given.length ? given.join(', ') : 'none'}.\n` +
+        '    A plain issue comment is read too, but it does not re-run this workflow, so the\n' +
+        '    approval sits in the timeline unseen until something else triggers a run.'
     );
   } else {
     console.log(`  approved by: ${independent.join(', ')}`);
@@ -132,7 +140,7 @@ function checkApproval(botCode, card, changed) {
         governing.slice(0, 5).map((f) => `      ${f}`).join('\n') +
         '\n    These files decide every other verdict, and the run that judges them is the run\n' +
         '    they configure. Only a reviewer outside the repository closes that loop.\n' +
-        '    The human comments "APPROVED-BY: human".'
+        '    The human submits a review whose body reads "APPROVED-BY: human".'
     );
   }
 }

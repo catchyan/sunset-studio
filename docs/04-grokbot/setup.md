@@ -69,7 +69,7 @@ past on the first bad afternoon, and after the first time it stops being a gate 
 `required_pull_request_reviews` is **null**, and that is not a relaxation. Every agent drives
 one GitHub account, and GitHub will not let an account approve its own pull request, so a
 required review here blocks every merge in the repository forever. Peer review is enforced by
-the envelope gate instead: the reviewer comments `APPROVED-BY: <code>` and the gate refuses
+the envelope gate instead: the reviewer submits a review reading `APPROVED-BY: <code>` and the gate refuses
 any approval from the author. Give each role its own account and this becomes a real
 signature; nothing else changes.
 
@@ -147,8 +147,9 @@ works:
 | Put a different command in `command.txt` than the card asks for | G3 red |
 | Add a fifth command to `command.txt` that the card does not ask for | G3 red |
 | Leave a non-zero `EXIT_CODE` line in the middle of `output.txt` | G3 red |
-| Merge with no `APPROVED-BY` comment, or one naming yourself | G3 red |
+| Merge with no `APPROVED-BY` review, or one naming yourself | G3 red |
 | Change `tools/gates/` without `APPROVED-BY: human` | G3 red |
+| Approve with a plain issue comment and merge without re-running | G3 stays red until a run reads it |
 | Name a branch `lane/A1/T-001"\|\|true;#` | G2 and G3 still judge it |
 | Rename the `summary` job | G4 red |
 | Add an unreferenced link to a document | G4 red |
