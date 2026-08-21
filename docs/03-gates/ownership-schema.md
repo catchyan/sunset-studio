@@ -1,103 +1,75 @@
-# 车道所有权表 · 格式与规则
+# Ownership table · format
 
-> Owner: Q1 闸门官（格式变更需 A1 联署）
-> **这里定义表长什么样。表的内容归各项目自己写**（项目仓库 `docs/03-process/ownership.md`）。
->
-> 本表是 G5 车道闸门的唯一依据，也用于生成 `.github/CODEOWNERS`。
-> **越界修改不看内容直接拒绝**（宪法第四条）。
+> Status: FROZEN. The **format** is defined here; the **contents** belong to each repository
+> (`OWNERSHIP.md` in the studio, `docs/03-process/ownership.md` in a project).
+
+The lane gate parses that markdown table directly. There is no JSON copy, deliberately: a
+second copy is a second truth, and the two will disagree on the day it matters.
 
 ---
 
-## 1. 为什么直接解析 markdown
-
-闸门工具直接解析这份 markdown 表格，**不另建一份 JSON 配置**。
-
-多一份配置就多一处会漂移的真相。两份东西只要能分别修改，它们就一定会在某天不一致，
-而且不一致的那天没人会察觉——直到某个 Bot 的越界被静默放行。
-
-代价是解析要健壮一点。这个代价值得付。
-
-## 2. 格式
+## Format
 
 ```markdown
-| 路径 glob | Owner | 备注 |
+| Path glob | Owner | Note |
 |---|---|---|
 | `packages/sim/**` | E1 | |
-| `packages/client/**` | E2 | |
-| `packages/client/src/render/**` | V1 | 例外：渲染管线归视觉总监 |
+| `packages/client/src/render/**` | V1 | more specific than the client row, so it wins |
+| `docs/00-charter/constitution.md` | **HUMAN** | |
 ```
 
-- 第一列必须用反引号包裹 glob
-- 第二列是 Bot 代号或下面的特殊 owner，`**粗体**` 会被忽略
-- 只支持 `*`（不跨 `/`）和 `**`（跨层级）两种通配
+- The glob must be in backticks. A row without backticks is ignored, which makes it safe to
+  write prose between sections of the table.
+- The owner is a role code or one of the special values below. Bold markers are stripped.
+- The third column is free text and is never parsed.
 
-## 3. 匹配规则
+## Matching
 
-**最长（最具体）的 glob 获胜。**
+Only `*` and `**` are supported. `*` stops at a slash; `**` at the end of a glob means
+"everything below this directory". Nothing else — no braces, no character classes — because
+a matching rule people cannot predict by reading is a rule they will get wrong.
 
-表里会有大量"例外"行：`packages/client/**` 归 E2，但 `packages/client/src/render/**` 归 V1。
-具体的必须赢，否则例外行写了等于没写。
+**The longest matching glob wins.** The table is mostly exceptions: a directory belongs to
+one role except for one subdirectory that belongs to another. Longest-match is what makes
+that expressible without ordering rules.
 
-## 4. 特殊 owner
+**A path no glob covers is a violation**, not a free-for-all. Adding a new top-level path
+means updating this table in the same pull request. The alternative — unlisted paths being
+implicitly public — means the table silently stops covering the repository as it grows.
 
-| Owner | 含义 |
+## Special owners
+
+| Value | Meaning |
 |---|---|
-| `人类` | 任何 Bot 不得修改。宪法、章程、愿景这类文件 |
-| `任何人` | 追加式共享。安灯、锁、CHANGELOG 这类**每个人都需要往里加东西**的文件 |
-| `各自` | 每人只能写与自己代号同名的那一个文件（心跳） |
-| `框架` | 工作室框架只读镜像。**只能作为升级 `.studio-version` 的一部分整体地变** |
+| `HUMAN` | No bot may change it, with or without an override. |
+| `FRAMEWORK` | The studio mirror. Changes only in a diff that also moves `.studio-version`. |
+| `ANYONE` | Append-shared. Add your own entry; never edit someone else's. |
+| `SELF` | Only the file whose name matches your role code. |
+| `TASK-AUTHOR` | Use with a `<TASK>` glob. Expanded to the branch's task id before matching. |
 
-### 关于 `任何人`
+`<TASK>` exists because of a real failure. The table originally read
+`` `evidence/T-XXX/**` `` with the owner written as prose — "whoever owns the task". The
+glob was a literal string matching nothing, and the owner was not a value the gate knew,
+so every evidence pack the team would ever produce was rejected. It failed on the first
+task, which is the good case; the bad case is a rule that fails on the hundredth.
 
-判断一个文件该不该是 `任何人`，问一句：**它是不是每个人在正常工作中都需要往里加东西？**
+## Rules
 
-是的话就必须共享。否则每次都要申请越界授权，而**烦的规矩会被绕过**——
-真实结果不会是"大家老实申请授权"，而是"大家渐渐不写了"。
+1. **One owner per path.** Two owners means a merge conflict nobody is responsible for.
+2. **Shared files are append-only.** `ANYONE` means adding your own line. Rewriting another
+   role's line is out of lane even in an `ANYONE` file.
+3. **Overrides need two acts.** The dispatcher lists the path in section 3 of the task card,
+   and someone with write access adds the `lane-override` label. Every labelled pull request
+   is fully reviewed by the gatekeeper — not sampled.
+4. **Wrong table, fix the table.** If the split is wrong, ask the architect to change it.
+   Working around it is worse than the wrong split, because a rule that must be bypassed to
+   get anything done teaches that bypassing rules is normal.
 
-规则：只能追加自己的条目，不能改别人的。
+## A file people frequently get wrong
 
-### 关于 `框架`
+If every change of a certain kind requires an override, the table is wrong, not the people.
 
-不用 `人类`，因为那会把**唯一一条合法的修改路径**（升级钉住的版本）也堵死，
-于是升级只能靠 admin 强推。**一条必须被绕过才能工作的规则，等于教所有人规则是可以绕的。**
-
-G5 只管"改法对不对"（有没有同时改 `.studio-version`），
-改完的内容是否真的等于那个版本，由 G0 逐字节核对。两道分工明确，都别越权。
-
-## 5. 使用规则
-
-1. 每条路径**有且只有一个** owner。没有共管（联署除外）。
-2. Bot 只能修改自己 owner 的路径。
-3. 需要改别人的路径 → 请对方改；或申请授权，PR 描述里写：
-   ```
-   LANE-OVERRIDE: packages/protocol/src/combat-events.ts (approved by @A1 in <消息链接>)
-   ```
-   ⚠️ 授权对 `人类` 路径无效。那些文件没有任何 Bot 侧的绕行方式。
-4. 本表由 A1 维护；A1 修改本表需 P0 联署。
-5. 新增 Bot 或新增顶层目录时，**必须先更新本表**，再开工。
-
-## 6. 每个项目必须为自己的表写断言
-
-**没有断言的车道表不可信。**
-
-车道表写错会导致两种故障，都不容易诊断：
-
-| 错法 | 症状 |
-|---|---|
-| 划分太粗 | 两个 Bot 抢同一批文件，天天冲突 |
-| 有遗漏 | 出现"无归属"路径，任何人改都被拒，任务永远做不完 |
-
-照着工作室的 `tools/gates/lane-check.test.mjs` 第三节，为本项目关键路径写一组断言并跑通。
-
-> 这不是形式主义。框架自己的那份断言第一次运行就抓出了尾部 `/**` 匹配不到任何深层文件的 bug——
-> 也就是说在那之前，G5 会静默放行**全部**越界。
-> **一道假装在工作的闸门，比没有闸门更危险**，因为所有人都以为自己被保护着。
-
-## 7. 生成 CODEOWNERS
-
-本表可转换成 `.github/CODEOWNERS`，GitHub 会据此自动请求评审。
-
-> ⚠️ CODEOWNERS 需要真实的 GitHub 账号。由于 Bot 共用一个人类账号提交，
-> 它在这里主要起**文档作用**，真正的强制来自 CI 的 G5。
->
-> 这是刻意的：**不要依赖我们控制不了的机制。**
+The changelog was originally owned by one role, and every framework fix therefore needed
+either an override or a second pull request. Both are tedious, and **tedious rules are not
+obeyed, they are quietly abandoned** — the real outcome would not have been diligent
+override requests, it would have been an empty changelog. It is now `ANYONE`, append-only.

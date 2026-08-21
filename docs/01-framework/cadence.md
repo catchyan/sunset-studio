@@ -1,180 +1,76 @@
-# 节奏与反馈机制
+# Cadence
 
-> 状态：ACTIVE v1.0 · 所有者：总督(P0)
-> 时区统一 **Asia/Shanghai**。所有 routine 的具体指令原文见 `@studio/docs/04-grokbot/routines.md`。
-
----
-
-## 1. 三层时钟
-
-| 周期 | 目的 | 失败的表现 |
-|---|---|---|
-| **日** | 保证不停摆、人类每天知情 | 有 Bot 卡了两天没人发现 |
-| **周** | 保证方向正确、流程在改进 | 做了很多事但没推进任何放行条件 |
-| **里程碑** | 保证品质，决定 go/no-go | 到了 M5 才发现 M1 的手感其实不行 |
+Three clocks. Everything that recurs is on exactly one of them, has one owner, and has a
+deadline. Anything not on this page is not scheduled, and "someone will notice" is not a
+schedule.
 
 ---
 
-## 2. 日循环
+## Daily
 
-| 时间 | 事件 | 所有者 | 产物 |
+| Time | Who | What | Output |
 |---|---|---|---|
-| 07:00 | 环境健康巡检 | O1 | `board/infra-health.md` |
-| 08:30 | **晨会派单** | P0 | 更新 `board/sprint.md`，派发任务信封 |
-| 10:00 | **红队抽检** | Q1 | `board/redteam/<date>.md`、`board/trust-ledger.md` |
-| 每 2h（09–23） | **心跳** | 全体 | `board/heartbeat/*.md` |
-| 每 3h | **停摆巡检** | P0 | `board/stall-report.md` |
-| 14:00 | **规格漂移检测** | S1 | `board/drift.md` |
-| 21:00 | **日报** | P0 | **`board/daily-brief.md`** ← 人类每天只看这个 |
-| 03:00（M5 起） | 经济模拟闸门 | C1 | `board/econ-reports/<date>.md` |
+| 07:00 | O1 | Environment check: CI, disk, the shared machine, stale locks | Silent unless broken |
+| 08:30 | P0 | Dispatch: write cards for today's tasks, assign reviewers | New cards on the backlog |
+| every 3h | P0 | Stall check (`tools/board/stall.mjs`) | Silent unless a lane stopped |
+| 10:00 | Q1 | Re-run a sample of yesterday's finished work in a clean environment | Sample report |
+| 14:00 | S1 | Drift check: do any two documents now disagree? | `board/drift.md`, only on findings |
+| 21:00 | P0 | Report to the human | Board (generated) + at most three decisions |
+| on event | Q1 | Respond to a red build within 30 minutes | Fix, revert, or andon |
 
-### 日循环的设计要点
+Two of these produce nothing on a good day, on purpose. A recurring report that says
+"all fine" every day stops being read within a week, and then stops being read on the day
+it says something else.
 
-**晨会在派单前先看安灯。** 有未关闭的安灯 → 今天不派新任务，全员处理安灯。这是丰田生产系统的核心纪律：**停线的成本远低于带病生产的成本。**
+### The nightly report
 
-**红队在晨会之后。** 因为它检查的是昨天的产出，不应该阻塞今天的开工。
+Generated, then edited down. `node tools/board/status.mjs` produces the table; P0 adds
+what a table cannot show — what is at risk, and what needs a human decision.
 
-**漂移检测在下午。** 给上午的产出留出被检测的时间。
-
-**日报在最后。** 它需要汇总当天所有信号。
-
----
-
-## 3. 周循环
-
-| 时间 | 事件 | 产物 |
-|---|---|---|
-| 周一 09:00 | **Sprint 规划**（常委会） | 新一轮 `board/sprint.md` |
-| 周二–周四 | 执行（日循环运转） | — |
-| 周五 16:00 | **Demo** | 可玩构建 + 录屏 + `board/demos/<week>.md` |
-| 周五 17:00 | **回顾**（常委会） | `board/retros/<week>.md` + **≥1 条 SOP 变更 PR** |
-
-### Sprint 规划的唯一评判标准
-
-> **这周的任务，各自推进了哪一条里程碑放行条件？**
-
-答不出来的任务不派。完成任务数不是 KPI，**放行条件的完成项数才是**。
-
-如果一周结束时放行条件零推进，总督必须在回顾里明确说"这周白干"并分析原因。这不是自责，是防止项目在"看起来很忙"的状态里空转半年。
-
-### 回顾必须产出 SOP 变更
-
-宪法第十九条。连续两周产出不了 → 总督记自己一次过并在日报里向人类报告。
-
-**一个从不改变的流程，一定不是最优的流程，只是没人敢说。**
+**At most three decisions per day.** More than three and the human becomes the queue that
+everything waits in, which is the bottleneck this whole framework exists to avoid. If
+there are five, P0 decides two of them and records the reasoning in `board/decisions/`.
 
 ---
 
-## 4. 里程碑循环
+## Weekly
 
-```
-里程碑范围确定
-  ↓
-若干个 sprint（周循环）
-  ↓
-G9 收敛检查（Q1 + S1）
-  ├─ 规格覆盖 / 反向覆盖 / 漂移清零 / 阻塞清零 / 安灯清零
-  └─ 技术债登记进下一里程碑 backlog
-  ↓
-H2 人类品味评审
-  ├─ 人类亲自玩 ≥20 分钟
-  ├─ 8 维度 ×5 分 rubric 打分
-  └─ 阈值不过 → 不放行，回到 sprint
-  ↓
-go / no-go
-  ├─ go → 扩编下一里程碑的 Bot，更新常委会轮值席
-  └─ no-go → 明确列出还差什么，重新排 sprint
-```
+**Monday 09:00 — planning.** P0, A1, Q1, plus the roles the week's work touches. One
+question decides everything: *what is the smallest thing that would be playable by
+Friday?* Output is cards on the backlog, each with a named reviewer.
+
+Twenty-five messages maximum. A planning meeting that needs more than that is planning
+work nobody has specified yet, and the fix is to specify it, not to keep talking.
+
+**Friday 16:00 — demo.** Something runs. A recording, a screenshot, a log. Not slides.
+
+**Friday 17:00 — retrospective.** Four questions: what broke, which gate should have
+caught it, what got slower, what should be deleted.
+
+The required output is a change to the process — most usefully a deletion. "Nothing needs
+changing" is an acceptable answer twice in a row. The third time it means the
+retrospective has become a ritual, and P0 raises that with the human.
 
 ---
 
-## 5. 反馈机制的四个方向
+## Per milestone
 
-### 5.1 向上（Bot → 人类）
+Every machine gate green, plus:
 
-**唯一通道**：`board/daily-brief.md`，21:00 由总督生成。
+- The gatekeeper's convergence review: no open andon, no unresolved escapes, evidence
+  packs complete for everything marked done.
+- The archivist's consistency review: the documents describe the thing that now exists.
+- **The human plays it.** At least twenty minutes, unassisted, on the target hardware.
 
-硬约束：
-- 一屏读完（正文 ≤400 字）
-- 三段：昨日完成 / 今日在做 / 风险与阻塞
-- **需要你决定的事 ≤3 条**，每条含背景 + 选项 + 推荐 + 不决定的后果
-- 不写形容词。今天零推进就诚实写零推进
-
-里程碑时额外一份验收报告 + 可玩构建。
-
-### 5.2 向下（人类 → Bot）
-
-- 人类只对总督说话。总督翻译成任务信封分发。
-- **唯一例外**：人类可以直接对任何 Bot 说 "Stop now"（紧急制动，宪法允许）。
-
-### 5.3 横向（Bot ↔ Bot）
-
-| 场景 | 通道 |
-|---|---|
-| 交接产物 | 工段群 @ 对方，附任务信封链接与产物路径 |
-| 求助 | 属于对方车道 → 直接 @；不属于 → 找 P0 |
-| 技术讨论 | **超过 3 轮没结论 → 停止，转 ADR 异步走文件** |
-| 契约请求 | @A1，**4 小时内必须响应**（哪怕是"我需要更多时间"） |
-| 紧急 | 拉安灯绳 |
-
-**禁止**：在群里做长篇技术讨论。群聊是给"交接可见"用的，不是给"想清楚"用的。
-
-### 5.4 向内（系统 → 系统）· 递归优化
-
-四条自我改进回路。**这是"可递归优化"的具体落地**：
-
-| 回路 | 输入 | 输出 | 周期 |
-|---|---|---|---|
-| **SOP 回路** | 回顾中暴露的流程缺陷、阻塞报告末尾的"应该改哪条 SOP" | SOP 变更 PR | 每周 ≥1 |
-| **闸门回路** | `board/escapes/` 缺陷逃逸分析 | 新增一道自动化检查 | 每次主干事故 |
-| **信任回路** | `board/trust-ledger.md` 的谎报与越界记录 | 对应 Bot 的闸门收紧 / description 重写 | 触发式 |
-| **规格回路** | `board/drift.md` 的漂移条目 | 改代码或改规格，二选一 | 每日 |
-
-**判据**：连续两周没有任何 SOP 变更 = 回顾流于形式，总督记过。
+The last one has no substitute. Metrics say whether it works. Only a person says whether
+it is worth playing, and shipping a milestone nobody has played is how a team spends six
+months building something technically excellent that nobody enjoys.
 
 ---
 
-## 6. 常委会轮值表
+## Exceptions
 
-Grok Bot 群聊上限 6 席。常任 4 席：P0 总督、A1 架构、Q1 闸门、D1 设计。
-剩余 2 席按里程碑轮换：
-
-| 里程碑 | 轮值席 1 | 轮值席 2 |
-|---|---|---|
-| M0 | S1 典藏 | O1 运维 |
-| M1 | E1 模拟 | E2 客户端 |
-| M2 | V1 视觉 | E2 客户端 |
-| M3 | E3 服务端 | E1 模拟 |
-| M4 | C1 经济 | N1 叙事 |
-| M5 | C1 经济 | T1 平衡 |
-| M6 | O1 运维 | V1 视觉 |
-
-> M0 阶段 D1 尚未激活，其席位由 S1 与 O1 之外的空位补足，或暂时空缺。
-
-轮换在里程碑放行后由 P0 执行：编辑群聊成员。被换下的 Bot 仍可通过一对一和工段群参与。
-
----
-
-## 7. 工段群（Cell）的生命周期
-
-```
-Sprint 规划时建立 → 命名 Cell-<特性名> → 成员 3–4 席（实现者 + 评审者 + P0）
-  ↓
-特性开发期间：交接、澄清、进度可见
-  ↓
-特性 PR 合入主干 → 立即解散（释放 50 额度）
-```
-
-**同时最多 3 个工段群。** 超过说明并发度太高（宪法第五章的并发度上限：IN_PROGRESS 任务数 ≤ 活跃 Bot 数）。
-
----
-
-## 8. 节奏的例外情况
-
-| 情况 | 节奏调整 |
-|---|---|
-| 安灯拉响 | 停止派新任务，日循环只保留心跳 + 巡检 + 日报 |
-| 人类连续 3 天未读日报 | 总督主动降低日报长度与决策数量，并在下一份日报第一行询问 |
-| 里程碑放行评审未过 | 不进下一里程碑，但周循环照常。总督重排 sprint 针对未过项 |
-| 单个 Bot 连续 2 次标红 | 撤回其任务重派；总督检查是否是 description 或任务信封的问题 |
-| 连续两周零 SOP 变更 | 下次回顾只问 Q2（找闸门漏洞），因为那最容易找到且不涉及人 |
+- **Andon overrides the clock.** A pulled cord stops scheduled work until it is closed.
+- **A red default branch outranks everything.** No new work merges until it is green.
+- **The human can interrupt anything.** Every other interruption goes through P0, so that
+  agents are not each other's interrupt sources.

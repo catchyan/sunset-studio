@@ -1,146 +1,216 @@
 #!/usr/bin/env node
 /**
- * G3 信封闸门 + G4 小步闸门。
+ * G3 envelope gate.
  *
- * 检查一个 PR 是否满足"可被审计"的最低条件：
- *   1. 分支名符合 lane/<CODE>/T-XXX
- *   2. board/tasks/T-XXX.md 存在，且八段齐全
- *   3. 该任务卡的负责人与评审人不是同一个 Bot（宪法第十一条：不许自证）
- *   4. evidence/T-XXX/ 里的四个必备文件存在，且 output.txt 以 EXIT_CODE=0 结尾
- *   5. diff 规模没有失控
+ * Checks that a PR meets the minimum conditions for being auditable later:
+ *   1. the branch names a task,
+ *   2. that task was dispatched (card exists, all eight sections, on the backlog),
+ *   3. the author is not also the reviewer,
+ *   4. every commit carries the task id,
+ *   5. the evidence pack ran the commands the card actually asked for,
+ *   6. the diff is small enough that reviewing it is still reviewing.
  *
- * 用法：node tools/gates/envelope-check.mjs <BRANCH> [BASE_REF]
+ * Usage: node tools/gates/envelope-check.mjs <BRANCH> [BASE_REF]
  */
 
-import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { GateError, git, parseBranch, readTaskCard, section, taskCardPath } from './lib.mjs';
 
 const MAX_DIFF_LINES = 400;
 const MAX_DIFF_FILES = 25;
 
-// 文档/看板类改动天然会大，且风险低，不适用小步闸门
-const DIFF_EXEMPT = /^(docs\/|board\/|evidence\/|assets\/|\.gitignore$)/;
+// Prose and board files are naturally large and carry little risk. Applying the
+// small-steps limit to them would only teach people to split documents oddly.
+const DIFF_EXEMPT = /^(docs\/|board\/|evidence\/|assets\/|\.gitignore$|\.gitattributes$)/;
 
 const SECTIONS = [
-  '## 1. 目标',
-  '## 2. 输入',
-  '## 3. 车道',
-  '## 4. 契约',
-  '## 5. 完成定义',
-  '## 6. 验收命令',
-  '## 7. 证据要求',
-  '## 8. 超时与升级',
+  '## 1. Goal',
+  '## 2. Inputs',
+  '## 3. Lane',
+  '## 4. Contracts',
+  '## 5. Definition of done',
+  '## 6. Acceptance command',
+  '## 7. Evidence',
+  '## 8. Timeout and escalation',
 ];
+
+const COMMIT_RE = /^(feat|fix|docs|refactor|test|chore|perf|content|art)\([^)]+\): .+ \[(T-\d{3,})\]$/;
+const BACKLOG = 'board/backlog.md';
 
 const fail = [];
 const warn = [];
 
-function main() {
-  const [branch, baseRef = 'origin/main'] = process.argv.slice(2);
-  if (!branch) {
-    console.error('用法: node tools/gates/envelope-check.mjs <BRANCH> [BASE_REF]');
-    return 2;
+/** Command lines from a fenced block, minus comments and blanks. */
+function commandLines(text) {
+  const fence = String(text ?? '').match(/```[a-z]*\n([\s\S]*?)```/);
+  const body = fence ? fence[1] : String(text ?? '');
+  return body
+    .split('\n')
+    .map((l) => l.replace(/\s+#.*$/, '').trim())
+    .filter((l) => l && !l.startsWith('#'));
+}
+
+function checkCard(taskId) {
+  const card = readTaskCard(taskId);
+  if (!card) {
+    fail.push(`Task card ${taskCardPath(taskId)} does not exist. Work is dispatched before it is done, not after.`);
+    return null;
   }
 
-  // —— 1. 分支命名 ——
-  const m = branch.match(/^lane\/([A-Z]\d)\/(T-\d{3,})$/);
-  if (!m) {
+  const missing = SECTIONS.filter((s) => !card.includes(s));
+  if (missing.length) {
     fail.push(
-      `分支名 "${branch}" 不符合 lane/<CODE>/T-XXX。\n` +
-        '    每个 PR 必须能追溯到一张任务卡。追溯不到的改动，事后没有人能说清它为什么存在。'
+      `Task card is missing: ${missing.join(', ')}\n` +
+        '    Without section 5 the assignee cannot know when to stop; without section 6 nobody can check them.'
     );
-    report();
-    return 1;
   }
-  const [, botCode, taskId] = m;
-  console.log(`信封闸门 · Bot=${botCode} · 任务=${taskId}`);
 
-  // —— 2. 任务卡 ——
-  const cardPath = `board/tasks/${taskId}.md`;
-  if (!existsSync(cardPath)) {
-    fail.push(`任务卡 ${cardPath} 不存在。先派单，再干活。`);
-  } else {
-    const card = readFileSync(cardPath, 'utf8');
-    const missing = SECTIONS.filter((s) => !card.includes(s));
-    if (missing.length) {
+  const owner = card.match(/^-\s*Owner:\s*@?(\S+)/m)?.[1];
+  const reviewer = card.match(/^-\s*Reviewer:\s*@?(\S+)/m)?.[1];
+  if (!reviewer || /^</.test(reviewer)) {
+    fail.push('Task card names no reviewer (or still holds the template placeholder).');
+  } else if (owner === reviewer) {
+    fail.push(`Owner and reviewer are both ${owner}. Nobody approves their own output.`);
+  }
+
+  if (existsSync(BACKLOG)) {
+    if (!readFileSync(BACKLOG, 'utf8').includes(taskId)) {
       fail.push(
-        `任务卡缺少以下段落：${missing.join('、')}\n` +
-          '    八段信封不是形式。缺第 5 段，接单者不知道什么算做完；缺第 6 段，没有人能验证它。'
+        `${taskId} is not on ${BACKLOG}.\n` +
+          '    A card with no backlog entry means somebody picked their own work. That is how scope drifts.'
       );
     }
-
-    // —— 3. 不许自证 ——
-    const owner = card.match(/^-\s*负责人:\s*@?(\S+)/m)?.[1];
-    const reviewer = card.match(/^-\s*评审人:\s*@?(\S+)/m)?.[1];
-    if (owner && reviewer && owner === reviewer) {
-      fail.push(`负责人与评审人同为 ${owner}。宪法第十一条：任何 Bot 不得批准自己的产出。`);
-    }
-    if (!reviewer || /^</.test(reviewer)) {
-      fail.push('任务卡未指定评审人（或仍是模板占位符）。');
-    }
   }
 
-  // —— 4. 证据包 ——
-  const evidenceDir = `evidence/${taskId}`;
-  if (!existsSync(evidenceDir)) {
-    fail.push(
-      `证据包目录 ${evidenceDir}/ 不存在。\n` +
-        '    "我跑过了，是通过的"不构成证据。见 /sop-evidence-pack。'
-    );
-  } else {
-    for (const f of ['command.txt', 'output.txt', 'diff-stat.txt', 'env.txt']) {
-      if (!existsSync(`${evidenceDir}/${f}`)) fail.push(`证据包缺 ${f}`);
-    }
-    const outPath = `${evidenceDir}/output.txt`;
-    if (existsSync(outPath)) {
-      const out = readFileSync(outPath, 'utf8').trimEnd();
-      if (!/EXIT_CODE=0\s*$/.test(out)) {
-        fail.push(
-          'output.txt 未以 EXIT_CODE=0 结尾。\n' +
-            '    只有退出码 0 算通过。"大部分测试都过了"不算。'
-        );
-      }
-      if (/\.{3}|\[truncated\]|省略/.test(out)) {
-        warn.push('output.txt 中出现疑似截断标记。证据包要求完整输出，红队会重跑比对。');
-      }
-    }
-  }
+  return card;
+}
 
-  // —— 5. 小步闸门 ——
-  const numstat = execSync(`git diff --numstat ${baseRef}...HEAD`, { encoding: 'utf8' })
+function checkCommits(taskId, baseRef) {
+  const subjects = git(`log --no-merges --format=%s ${baseRef}..HEAD`)
     .split('\n')
-    .filter(Boolean)
-    .map((l) => l.split('\t'));
+    .map((s) => s.trim())
+    .filter(Boolean);
 
+  if (subjects.length === 0) {
+    fail.push('No commits on this branch.');
+    return;
+  }
+
+  for (const s of subjects) {
+    const m = s.match(COMMIT_RE);
+    if (!m) {
+      fail.push(`Commit subject does not match "<type>(<scope>): <subject> [T-XXX]":\n      ${s}`);
+    } else if (m[2] !== taskId) {
+      fail.push(`Commit references ${m[2]} but the branch is ${taskId}:\n      ${s}`);
+    }
+  }
+}
+
+function checkEvidence(taskId, card) {
+  const dir = `evidence/${taskId}`;
+  if (!existsSync(dir)) {
+    fail.push(`Evidence pack ${dir}/ does not exist. "I ran it and it passed" is not evidence.`);
+    return;
+  }
+
+  for (const f of ['command.txt', 'output.txt', 'diff-stat.txt', 'env.txt']) {
+    if (!existsSync(`${dir}/${f}`)) fail.push(`Evidence pack is missing ${f}.`);
+  }
+
+  const outPath = `${dir}/output.txt`;
+  if (existsSync(outPath)) {
+    const out = readFileSync(outPath, 'utf8').trimEnd();
+    if (!/EXIT_CODE=0\s*$/.test(out)) {
+      fail.push('output.txt does not end with EXIT_CODE=0. Exit code zero is the only passing grade.');
+    }
+    if (/\.{3}$|\[truncated\]/m.test(out)) {
+      warn.push('output.txt looks truncated. The gatekeeper re-runs a sample and compares, so paste all of it.');
+    }
+  }
+
+  // The acceptance command is chosen when the task is dispatched, precisely so
+  // that it cannot be chosen after seeing which commands happen to pass.
+  const cmdPath = `${dir}/command.txt`;
+  if (card && existsSync(cmdPath)) {
+    const want = commandLines(section(card, '## 6. Acceptance command'));
+    const got = commandLines(readFileSync(cmdPath, 'utf8'));
+    const missing = want.filter((c) => !got.includes(c));
+    if (want.length && missing.length) {
+      fail.push(
+        `command.txt does not contain the acceptance command from section 6 of the card:\n` +
+          missing.map((c) => `      missing: ${c}`).join('\n')
+      );
+    }
+  }
+}
+
+function checkDiffSize(baseRef) {
   let lines = 0;
   let files = 0;
-  for (const [add, del, path] of numstat) {
+  for (const row of git(`diff --numstat ${baseRef}...HEAD`).split('\n').filter(Boolean)) {
+    const [add, del, ...rest] = row.split('\t');
+    const path = rest.join('\t');
     if (!path || DIFF_EXEMPT.test(path)) continue;
     files += 1;
     lines += (Number(add) || 0) + (Number(del) || 0);
   }
-  console.log(`  代码变更：${files} 个文件 / ${lines} 行`);
+  console.log(`  code changes: ${files} file(s) / ${lines} line(s)`);
 
   if (lines > MAX_DIFF_LINES || files > MAX_DIFF_FILES) {
     fail.push(
-      `变更规模 ${files} 文件 / ${lines} 行，超出上限（${MAX_DIFF_FILES} / ${MAX_DIFF_LINES}）。\n` +
-        '    这不是风格偏好。超过这个规模，评审者会从"审查"退化为"扫一眼然后点批准"，\n' +
-        '    G8 闸门就变成了摆设。请拆成多个任务。'
+      `Diff is ${files} files / ${lines} lines, over the limit of ${MAX_DIFF_FILES} / ${MAX_DIFF_LINES}.\n` +
+        '    Past this size review degrades into skimming and clicking approve, which makes the\n' +
+        '    review gate decorative. Split the task.'
     );
   }
+}
+
+function main() {
+  const [branch, baseRef = 'origin/main'] = process.argv.slice(2);
+  if (!branch) {
+    console.error('Usage: node tools/gates/envelope-check.mjs <BRANCH> [BASE_REF]');
+    return 2;
+  }
+
+  const parsed = parseBranch(branch);
+  if (!parsed) {
+    fail.push(
+      `Branch "${branch}" is not lane/<CODE>/T-XXX.\n` +
+        '    Every PR has to trace back to a task card. A change nobody can trace is a change\n' +
+        '    nobody can explain six weeks later.'
+    );
+    report();
+    return 1;
+  }
+
+  const { botCode, taskId } = parsed;
+  console.log(`envelope gate · bot=${botCode} · task=${taskId}`);
+
+  const card = checkCard(taskId);
+  checkCommits(taskId, baseRef);
+  checkEvidence(taskId, card);
+  checkDiffSize(baseRef);
 
   report();
   return fail.length ? 1 : 0;
 }
 
 function report() {
-  for (const w of warn) console.warn(`\n⚠️  ${w}`);
+  for (const w of warn) console.warn(`\nWARN: ${w}`);
   if (fail.length === 0) {
-    console.log('✅ 信封与证据齐备。');
+    console.log('OK: envelope and evidence are complete.');
     return;
   }
-  console.error(`\n❌ ${fail.length} 项不合格：\n`);
+  console.error(`\nFAIL: ${fail.length} problem(s):\n`);
   fail.forEach((f, i) => console.error(`  ${i + 1}. ${f}\n`));
 }
 
-process.exit(main());
+try {
+  process.exit(main());
+} catch (err) {
+  if (err instanceof GateError) {
+    console.error(`FAIL: ${err.message}`);
+    process.exit(2);
+  }
+  throw err;
+}

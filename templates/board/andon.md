@@ -1,44 +1,38 @@
-# 安灯记录（Andon）
+# Andon
 
-> 任何 Bot 都可以拉绳。**拉错不受任何责备，不拉才是过错。**
-> 只有总督 P0 能把状态改为 CLOSED，且必须在相关方确认修复后。
-> 有 OPEN 状态的安灯时，**全线停止接新任务**。
+Append-only. Add your own entry; never edit anyone else's.
 
-## 必须拉绳的四种情况
+Four triggers, and only these four:
 
-1. `MAIN_RED` — main 分支 CI 红
-2. `SPEC_CONFLICT` — 两份规格互相矛盾
-3. `CONTRACT_VIOLATION` — 冻结契约被违反
-4. `WRONG_ASSUMPTION` — 发现前面的工作建立在错误假设上
+1. The default branch is red.
+2. Two specifications contradict each other and code is being written against one of them.
+3. A `FROZEN` contract was violated.
+4. Work in flight rests on an assumption now known to be false.
 
-犹豫算不算 → **拉**。误报成本几十分钟，漏报成本几天。
+Anything else is a blocker report. Keeping the list short is what keeps the cord meaningful.
 
-## 格式（新的加在最上面）
-
-```markdown
-## 🔴 ANDON-YYYY-MMDD-NN · <一句话>
-- 拉绳人:
-- 时间:
-- 类型: MAIN_RED | SPEC_CONFLICT | CONTRACT_VIOLATION | WRONG_ASSUMPTION
-- 现象: <客观描述，贴原文/报错/两处矛盾的原文引用>
-- 影响范围:
-- 我建议的第一步:
-- 状态: OPEN
-
-<关闭时补>
-- 状态: CLOSED
-- 关闭时间:
-- 根因:
-- 修复:
-- ★ 哪道闸门本该拦住它？为什么没拦住？应该新增什么检查？
-```
+**Pulling unnecessarily is never penalised. Failing to pull is.** A false alarm costs an
+hour. An unpulled cord costs everything built on the broken assumption between now and
+whenever somebody eventually notices, which is always later than this.
 
 ---
 
-## 当前状态：✅ 无 OPEN 安灯
+## A-<date>-<n> · <one line>
 
----
+- Pulled by: <code> at <ISO timestamp>
+- Type: red-main | contradiction | frozen-contract | false-assumption
+- Affected: which tasks, which files, who should stop now
+- Evidence: link to the failed run, or both contradicting quotes with their paths
+- Status: OPEN
 
-## 历史
+<!--
+On close, replace the status line with all three of these:
 
-*（暂无）*
+- Status: CLOSED at <ISO timestamp>
+- What was actually wrong:
+- What was done:
+- Which gate should have caught it: <gate id, or "none exists">
+
+The last line is mandatory. "None exists" is the only legitimate source of new gates —
+the constitution requires a real incident before the process is allowed to grow.
+-->

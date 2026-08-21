@@ -1,95 +1,95 @@
-# 框架版本与发布
+# Versioning and elevation
 
-> Owner: P0 总督（发布）+ Q1 闸门官（复核）· 变更需人类批准
-> 本仓库是所有项目的**制度依赖**。改动它会影响所有正在跑的项目，因此发布本身需要纪律。
+Two things live here: how the framework is released, and what is allowed into it in the
+first place. They belong together, because most version churn comes from admitting things
+that should never have been admitted.
 
 ---
 
-## 1. 版本号语义
+## Version numbers
 
-`vMAJOR.MINOR.PATCH`
+`vMAJOR.MINOR.PATCH`.
 
-| 位 | 什么时候升 | 项目升级的代价 |
-|---|---|---|
-| **MAJOR** | 破坏性变更：闸门变严、车道表格式变、SOP 的强制步骤增加、角色职责重划 | 项目需要**改自己的东西**才能通过 |
-| **MINOR** | 新增能力：新 SOP、新可选闸门、新模板 | 项目改个版本号即可 |
-| **PATCH** | 措辞澄清、修错别字、补例子。**不改变任何行为** | 无 |
+**MAJOR** — existing projects must do work to adopt. A gate got stricter, a file format
+changed, a required section was added, an owner token was renamed.
 
-**判据**：升级之后，某个项目原本能过的 CI 会不会红？
-- 会 → MAJOR
-- 不会但多了新能力 → MINOR
-- 不会且什么都没多 → PATCH
+**MINOR** — new capability, nothing breaks. A new SOP, a new optional gate, a new tool.
 
-## 2. 发布流程
+**PATCH** — wording, typos, clarifications. No behaviour change anywhere.
 
-```
-1. PR 合入 main（必须通过本仓库自己的闸门）
-2. 更新 CHANGELOG.md：每条变更注明 ★ 由哪次真实事故促成（章程铁律二）
-3. 打 tag：git tag -a v1.2.0 -m "..." && git push origin v1.2.0
-4. 在各项目仓库开"框架升级"PR：改 .studio-version + 重新同步镜像
-5. MAJOR 版本额外：附迁移说明，逐条列出各项目需要改什么
-```
+The test for MAJOR: mount the new version in an existing project and run its gates unchanged.
+If anything goes red, it is MAJOR — regardless of how small the change looked.
 
-### 第 4 步为什么是**各项目自己**开 PR
+## Releasing
 
-因为升级必须是**项目主动接受**的，不能被推送。
+1. Pull request into the studio's default branch, with the cause marked `★`.
+2. Append to `CHANGELOG.md`. Every entry carries a cause: a date, a task, an incident link.
+3. Tag the release.
+4. Projects open their own pull requests to raise `.studio-version` when they choose to.
 
-一个项目可能正处在里程碑冲刺期，此时被动接受一套变严的闸门是灾难。
-钉版本机制的全部意义就在这里：**项目决定什么时候承受升级成本。**
+**Projects upgrade; the framework is never pushed onto them.** A project mid-milestone that
+is forced to absorb a framework change gets two unrelated failures at once and cannot tell
+which is which.
 
-## 3. 项目侧的升级操作
+## How far behind a project may fall
 
-```bash
-node docs/_studio/tools/mount.mjs --version v1.2.0   # 重新同步镜像
-node tools/gates/studio-sync.mjs                     # 校验逐字节一致
-```
-
-PR 的 diff 会**完整显示这次制度变了什么**——这是双仓 + 镜像方案最大的好处：
-制度变更和代码变更一样可评审、可 diff、可回滚。
-
-## 4. 滞后上限
-
-| 版本类型 | 项目最多滞后多久 |
+| Version type | Limit |
 |---|---|
-| PATCH | 不限 |
-| MINOR | 一个里程碑 |
-| MAJOR | **两个里程碑** |
+| PATCH | Whenever convenient |
+| MINOR | Before the next milestone |
+| MAJOR | At most two milestones behind |
 
-超过上限 → S1 典藏官在漂移报告中标记，进日报风险区。
+Past that, the project is effectively on its own fork and stops contributing to — or
+benefiting from — anything the studio learns.
 
-**为什么 MAJOR 也要有上限**：允许无限滞后，等于允许分叉。
-三个项目分别停在 v1、v2、v3，工作室层就名存实亡了——
-这时候"框架"只是三份互不相干的文档的统称。
+## Emergency fixes
 
-## 5. 紧急修复
+If a released gate is broken in a way that lets bad work merge, or blocks all good work: fix
+it, release a PATCH the same day, and tell every project to upgrade immediately. Record it
+as an incident afterwards. This is the one case where a framework change may precede its
+write-up.
 
-框架里发现会导致**闸门失效**的 bug（例如车道检查漏放了某类越界）：
+---
 
-1. 立即在本仓库拉安灯
-2. 修复 → PATCH 版本 → 通知所有项目
-3. **所有项目 24 小时内必须升级**，这是唯一的强制升级情形
-4. 事后写事故记录，回答：**为什么本仓库自己的测试没抓住它？**
+## What is allowed into the framework
 
-> 第 4 问是关键。框架仓库的闸门 bug，本质上是"**闸门的闸门**"失效了。
-> 每一次都必须在 `tools/gates/*.test.mjs` 里补一条断言，
-> 让这个 bug 类别在本工作室永远不可能重现。
+**The default answer is no.**
 
-## 6. CHANGELOG 格式
+The framework is not a place to put good ideas. Everything in it is read by every agent on
+every project forever, and its cost is paid continuously while its benefit is occasional.
 
-```markdown
-## v1.2.0 — 2026-10-15
+### The rule of two
 
-### 破坏性变更
-（无）
+Something is elevated when a **second real project** needs it. Not a project that might
+exist. Not a project someone plans. A second repository with commits in it.
 
-### 新增
-- `/sop-elevate`：二次法则，约束可复用件上升
-  ★ 起因：EL-002 提前把渲染管线上升，第二个项目实际不需要，回退花了两天
+Why two rather than three: with weak agents, a capability that stays at the project layer
+gets copied, and the copies begin diverging on day one. Waiting for a third project means
+merging three variants that already disagree. Two is early enough that the merge is still
+cheap and late enough that the need is real.
 
-### 修复
-- 车道闸门：尾部 `/**` 匹配不到深层文件
-  ★ 起因：lane-check.test.mjs 首次运行即发现；若无此测试，闸门会静默放行全部越界
-```
+**Exception:** gates and process documents. Those *are* the framework, and they are elevated
+on first use — that is what makes the studio a studio rather than a folder of tips.
 
-**每一条都必须有 ★ 起因。** 写不出起因的条目，按章程铁律二不该存在——
-它是凭想象加的，而凭想象加的规矩会一直膨胀到没人执行。
+### Six questions for a proposal
+
+1. Which two projects need it? Name the repositories and the commits.
+2. What did each of them do instead, before this?
+3. What is the interface, and what is deliberately *not* in it?
+4. What is the migration cost for the projects already running?
+5. Who owns it once it is up here, and who reviews changes to it?
+6. What would make us remove it again?
+
+A proposal that cannot answer six has not been thought about long enough.
+
+### What elevation costs
+
+Once something is at the studio layer it gets semantic versioning, a documented interface,
+migration notes on every breaking change, and no project-specific escape hatches. If that
+sounds heavy, that is the point — it is the accurate price, and paying it at the project
+layer where it belongs is usually cheaper.
+
+### Demotion
+
+Something used by one project and ignored by the rest goes back down. Deleting from the
+framework is cheap and always allowed; the retrospective is the natural place to propose it.

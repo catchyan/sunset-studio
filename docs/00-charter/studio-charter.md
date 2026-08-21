@@ -1,131 +1,79 @@
-# 工作室章程（Studio Charter）
+# Studio charter
 
-> 状态：ACTIVE v1.0 · 所有者：**人类总制作人** · Bot 不得修改
-> 效力：本文件与 `constitution.md` 同级，是工作室层的最高文件。
-> 项目层的一切（愿景、GDD、路线图）在其之下。
+> Status: FROZEN. Owner: the human. No bot may change this file.
 
----
+## There are two products
 
-## 1. 我们在造两个东西
+**A. The games.** What players buy.
 
-| | 产品 | 判断标准 |
+**B. A team that can build games repeatedly, quickly, and well.** What outlives them.
+
+B is the main product. A is its output.
+
+This is not a slogan; it changes decisions. A shortcut that ships one game a week earlier
+and leaves nothing reusable behind is a bad trade here. So is a framework so elaborate that
+the first game never ships — B without A is a folder of process documents.
+
+## Mission
+
+Make game development faster, steadier, and better with each project.
+
+Concretely: **the second game's time to first playable slice must be under half the first
+game's.** If it is not, the framework was overhead pretending to be leverage, and the
+retrospective's job is to find out which parts.
+
+## Two layers
+
+| Layer | Contains | Test |
 |---|---|---|
-| **A** | 游戏 | 好不好玩 |
-| **B** | **能持续产出游戏的工作室** | **第 N+1 款的启动成本是否显著低于第 N 款** |
+| Studio | How we work, what counts as done, the tools that enforce it | Still true for a different game? |
+| Project | What this game is, and how far along it is | Meaningless for a different game |
 
-大多数团队只承认 A 的存在，把 B 当作 A 的副产品。结果是每做完一款游戏，团队学到的东西留在少数人的脑子里，
-下一款重新踩一遍同样的坑。
+One question decides where anything belongs: **would a team building a completely different
+game still need this?** Yes, studio. No, project.
 
-**本工作室反过来：B 是主产品，A 是 B 的输出。**
+The question has a sharper form for reviews: hand the paragraph to a team building a card
+game. Can they use it? A gate checks this mechanically for proper nouns, but the judgement
+is the point and the gate only catches the obvious cases.
 
-这不是说游戏不重要——恰恰相反，只有真的把游戏做出来、做好，B 的能力才被证明。
-**没有 A 的 B 是空谈**，一个从没交付过游戏的"高效流程"什么都不是。
+## Three iron laws
 
-但当 A 与 B 冲突时——比如"绕过闸门能让这个功能今天上线"——**B 优先**。
-因为 A 的这一次损失是有限的，B 的损失是复利的。
+**One. Process and content stay separate.**
 
-## 2. 工作室的唯一使命
+The moment a game's specifics leak into the framework, the framework stops being reusable
+and the next project starts by deleting things. Enforced by a gate.
 
-> **让做游戏这件事，随着做的次数增加而变得更快、更稳、更好，而不是更累。**
+**Two. Process changes come from real incidents.**
 
-具体化成一句可以被证伪的话：
+Every framework change names the failure that caused it, with a date and a link. A framework
+that grows from imagination grows without bound, and every rule is a tax paid on every task
+forever. Enforced by a gate.
 
-> **第二款游戏从"决定做"到"首个可玩垂直切片"的时间，必须不超过第一款的 50%。**
-> 第三款不超过第二款的 70%。此后每款至少不退步。
+**Three. Deleting beats adding.**
 
-达不到 → 说明我们只是做了几款游戏，没有建成工作室。这是工作室层的**放行条件**，
-和游戏的里程碑放行条件一样刚性。详见 `@studio/docs/05-studio/studio-roadmap.md`。
+When a retrospective produces a change, prefer removing a rule to adding one. The default
+drift of any process is toward more, and nothing corrects it except a standing preference
+for less.
 
-## 3. 三条工作室层的铁律
+## How projects consume the framework
 
-### 铁律一 · 制度与项目分离
+A project pins a version in `.studio-version` and holds a byte-for-byte read-only mirror at
+`docs/_studio/`. CI verifies the mirror against the pinned tag on every pull request.
 
-制度层（本仓库）**不允许出现任何一款具体游戏的内容**。
+Projects upgrade when they choose to. The framework is never pushed onto a project
+mid-milestone, because absorbing two unrelated failures at once makes both harder to
+diagnose.
 
-不许出现：角色名、招式名、经济数值、某款游戏的里程碑、某款游戏的技术选型。
-可以出现：角色**类型**（如"负责手感的岗位"）、机制**类别**（如"帧数据类规格"）。
+Why a mirror rather than a submodule: agents lose submodules in every available way, and a
+mirror is just files.
 
-**检验方法**：把本仓库交给一个做卡牌游戏的团队，他们能不能用？
-不能用的段落，就是混进来的项目内容，应该下沉到项目仓库。CI 有一条检查扫描已知的项目专名。
+## What the human does not delegate
 
-### 铁律二 · 制度的改动必须来自真实事故
+- Whether the game is good.
+- Whether to ship.
+- Changes to this document and to the constitution.
+- Which project exists at all.
 
-**不许凭想象改流程。**
-
-每一条 SOP 变更、每一道新闸门，PR 描述里必须回答：
-
-> 这条改动，是哪一次真实的失败促成的？给出日期、任务号、或事故记录的链接。
-
-回答不出来 → 拒绝合并。
-
-理由：凭想象设计的流程，会往"看起来严谨"的方向膨胀，最终变成没人真的执行的仪式。
-只有从真实事故长出来的流程，才对得起它索取的执行成本。
-
-> 唯一的例外：**工作室 S0 阶段的初始框架**。它不可能来自事故，因为还没发生过任何事。
-> 但 S0 一结束，本铁律立即生效，且 S0 期间凭想象立的规矩要在第一次回顾时逐条复查。
-
-### 铁律三 · 删除的优先级高于新增
-
-流程的天然趋势是只增不减。每次出事加一道检查，三年后没人记得为什么要做这些动作。
-
-**每次回顾必须提名至少一条"可以删掉的规矩"。**
-一条规矩连续 3 个月没有拦住任何东西 → 默认删除，除非有人能说出它防的是什么。
-
-判据：**一道从未触发过的闸门，和一道不存在的闸门，唯一的区别是前者还要花时间执行。**
-
-## 4. 什么归工作室，什么归项目
-
-| | 工作室层（本仓库） | 项目层（游戏仓库） |
-|---|---|---|
-| 宪法、章程 | ✅ | ❌ 继承 |
-| RELAY 框架、节奏 | ✅ | ❌ 继承 |
-| 岗位定义 | ✅ 定义**角色** | ✅ 决定**这个项目配哪些岗** |
-| 闸门定义 G1–G9 / H1–H2 | ✅ | ❌ 继承 |
-| SOP | ✅ | ❌ 继承 |
-| 车道所有权**表的格式与规则** | ✅ | — |
-| 车道所有权**表的内容** | ❌ | ✅ 每个项目自己一份 |
-| 看板文件**模板** | ✅ | — |
-| 看板**实例**（真实的心跳、任务、日报） | ❌ | ✅ |
-| 闸门工具代码 | ✅ | ❌ 引用 |
-| 术语表 · 流程术语 | ✅ | — |
-| 术语表 · 游戏术语 | ❌ | ✅ |
-| 愿景、GDD、手感、经济、美术 | ❌ | ✅ |
-| 技术架构、契约、ADR | ❌ | ✅ |
-| 里程碑路线图 | ❌ | ✅ |
-| 游戏代码与资产 | ❌ | ✅ |
-| 可复用代码 | ✅ **但受二次法则约束**（见 `/sop-elevate`） | ✅ 首次实现都在这里 |
-
-## 5. 项目仓库如何消费本仓库
-
-项目仓库通过 `.studio-version` **钉住一个 tag**，并在 `docs/_studio/` 保留一份逐字节一致的**只读镜像**。
-
-```
-sunset-studio (唯一真相)
-      │  tag v1.0.0
-      ▼
-game-repo/.studio-version   →  v1.0.0
-game-repo/docs/_studio/     →  该 tag 的只读镜像，Bot 直接本地读
-game-repo CI: studio-sync   →  校验镜像与 tag 逐字节一致，不一致即红
-```
-
-这样设计的三个理由：
-
-1. **Bot 本地就能读到全部制度**，不需要跨仓库拉取、不需要网络、不需要理解 submodule。
-2. **升级框架是一个显式的、可评审的 PR**：改一个版本号，diff 里完整显示这次制度变了什么。
-3. **镜像是只读的**：车道所有权表把 `docs/_studio/**` 的 owner 设为"无人"，任何在项目仓库里改制度的企图会被 G5 直接拒绝。想改制度，回工作室仓库提 PR。
-
-> 第 3 点是关键。如果项目能就地改制度，那么每个项目都会"就这次特殊情况改一下"，
-> 半年后三个项目有三套互不兼容的框架，工作室就不存在了。
-
-## 6. 人类的角色
-
-人类总制作人在工作室层保留三项**不可委托**的权力：
-
-1. **批准章程与宪法的变更**（本文件、`constitution.md`）
-2. **品味评审**（H2 闸门）——机器判不了"好不好玩""对不对味"
-3. **决定做什么游戏**——立项是人类的事
-
-除此之外的一切，目标都是逐步不需要人类。
-
-**衡量工作室成熟度的一个关键指标就是：每周需要人类介入的次数是否在下降**（见 `@studio/docs/05-studio/metrics.md`）。
-如果一年后人类还在每天回答十个问题，那这个工作室是失败的，无论它做出了多好的游戏。
+Everything else is delegated, and delegated means actually delegated. A framework whose
+every decision routes back to one person is a framework that has a single-threaded
+bottleneck with extra steps.

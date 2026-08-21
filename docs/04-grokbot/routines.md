@@ -1,342 +1,93 @@
-# Routines 定义（反馈机制的骨架）
+# Routines
 
-> 状态：ACTIVE v1.0 · 所有者：总督(P0)
-> Grok Bot 的 Routine = 定时或事件触发的自动任务。每个 Bot ≤50 条，保留最近 20 次运行记录。
-> **这是整个反馈机制赖以运转的物理基础。没有 routine，这套制度就只是文档。**
+A routine is a scheduled prompt attached to one bot. Every recurring obligation in this
+framework is one of these — if it is not here, it is not scheduled, and "someone will
+remember" is not a schedule.
 
-## 使用说明
-
-1. 在**该 routine 所有者 Bot** 的对话里，把下面的「指令原文」发给它，说"请把这个设为 routine，时间 XX，时区 Asia/Shanghai"。
-2. 创建后**必须做一次 Test run**，在旁边看着，确认它不会乱改东西。
-3. 在 **View conversation details → Routines** 里确认 next run 正确。
-4. Grok Bot 在长期无人响应时可能自动暂停 routine。**每周检查一次面板**，恢复被暂停的。
-
-**通用约束**（写进每条 routine 的指令里）：
-> 这是一次自动运行。如果需要的数据不可用（比如 git 拉不下来），**报告失败，不要用旧数据凑合**。
-> 如果需要做任何写入 main 分支或外部系统的操作，停下来等人类批准。
+Ten routines. There used to be more, including a self-reported heartbeat from every agent
+every two hours. That produced sixty writes a day whose entire content was "still here",
+and it could not cover the one case that mattered: an agent that has stopped and therefore
+cannot report stopping. Commit timestamps report the same fact for free and cannot be
+faked by an absent agent.
 
 ---
 
-## R1 · 心跳（全体 Bot）
-
-**所有者**：每个 Bot 各一条
-**频率**：每 2 小时，09:00–23:00（Asia/Shanghai）
-**指令原文**：
-
-```
-这是心跳任务。请执行：
-
-1. cd /workspace/lanes/{{LANE}} && git fetch origin
-2. 检查你当前的任务状态
-3. 用 /sop-heartbeat 的格式，覆盖写入 board/heartbeat/{{CODE}}.md
-4. 提交并 push 到你的 lane 分支（心跳文件不需要 PR，可直接 push 你自己的分支；
-   总督的巡检会从各 lane 分支读取）
-
-铁律：
-- 哪怕内容是"仍在处理 T-042 第 3 步，无进展"，也必须写。装作在思考是最昂贵的行为。
-- 如果你卡住超过 30 分钟，blocked 字段必须写明具体卡在哪，并在写完后 @总督。
-- 如果同一个问题你已经失败 3 次，停手，按 /sop-blocker 写阻塞报告，不要再试第 4 次。
-```
-
----
-
-## R2 · 停摆巡检（P0 总督）
-
-**频率**：每 3 小时，09:00–24:00
-**指令原文**：
-
-```
-这是停摆巡检。请执行：
-
-1. cd /workspace/lanes/P0-steward && git fetch --all
-2. 读取所有 lane 分支上的 board/heartbeat/*.md
-3. 对每个活跃 Bot 判定：
-   - 心跳更新时间 ≤3 小时  → 正常
-   - 3–6 小时未更新        → 标黄：在其一对一对话里 @它，问"你现在在做什么？卡住了吗？"
-   - >6 小时未更新         → 标红
-   - 任务 IN_PROGRESS 超过 24 小时且期间无 commit → 标红
-   - 任何 Bot 连续 2 次被标红 → 撤回该任务重新派发，并把这件事写进本周回顾
-4. 检查 board/andon.md：有未关闭的安灯吗？有的话，全线应该处于停工状态，
-   确认没有人在接新任务。
-5. 检查 board/locks.md：有超过预计释放时间 1 小时的锁吗？强制回收并记录。
-6. 把结果写入 board/stall-report.md（覆盖写），并同步更新 board/sprint.md 的状态列。
-
-如果本次巡检发现任何标红，在下一份日报的风险区必须体现。
-```
-
----
-
-## R3 · 晨会派单（P0 总督）
-
-**频率**：每日 08:30
-**指令原文**：
-
-```
-这是晨会。请执行：
-
-1. cd /workspace/lanes/P0-steward && git fetch --all && git rebase origin/main
-2. 读 board/sprint.md、board/stall-report.md、board/andon.md、board/blockers/
-3. 检查安灯：如果有未关闭的安灯，今天不派任何新任务，
-   只组织相关方处理安灯事项，然后结束本次晨会。
-4. 无安灯时，按以下顺序决定今天做什么：
-   a. 昨天 REVIEW 状态未处理完的 → 优先催评审
-   b. BLOCKED 的任务 → 先解阻塞
-   c. 从当前里程碑的 backlog 里挑新任务
-   ★ 挑选标准只有一条：这个任务推进了哪条里程碑放行条件？答不出来就不派。
-5. 为每个新任务写完整的八段任务信封（照 /sop-task-envelope），存 board/tasks/T-XXX.md
-   ★ 铁律：如果我自己写不出第 6 段"验收命令"，说明这个任务定义不清，
-     那是我的问题，不许派出去。先去把规格补清楚。
-6. 检查并发度：IN_PROGRESS 的任务数不得超过活跃 Bot 数，
-   且同一个 package 内最多 1 个。
-7. 在各 Bot 的一对一对话里派发，附任务信封路径。
-8. 更新 board/sprint.md。
-
-不要在这一步做任何技术判断。技术判断是 @架构 的事。
-```
-
----
-
-## R4 · 日报（P0 总督）★ 人类每天只看这个
-
-**频率**：每日 21:00
-**指令原文**：
-
-```
-这是每日简报。请执行：
-
-1. cd /workspace/lanes/P0-steward && git fetch --all
-2. 收集：今天合并的 PR、今天状态变更的任务、所有心跳、stall-report、
-   redteam 报告、drift 报告、andon、blockers、CI 状态
-3. 照 /sop-daily-brief 的格式生成 board/daily-brief.md，提交 PR 或直接 push（board 目录允许直推 P0 lane）
-4. 在与人类的对话里贴出简报全文
-
-★ 硬约束（违反就重写）：
-- 全文能在一屏内读完（约 400 字以内正文 + 表格）
-- 三段结构：昨日完成 / 今日在做 / 风险与阻塞
-- "需要你决定的事"最多 3 条。放不下 3 条以内说明我没做优先级排序。
-- 每条决策事项必须含四要素：背景两句 + 至少两个选项 + 我的推荐 + 不决定的后果
-- 不写形容词，不写"进展顺利"这种废话。只写事实和数字。
-- 如果今天什么都没推进，就诚实地写"今天零推进，原因是 X"。
-  粉饰太平比零推进本身糟糕十倍。
-
-★ 我的责任：人类的精力是本项目最稀缺的资源。
-能自己定的绝不上交；必须上交的，把选项和推荐准备到位，让他 30 秒能决定。
-```
-
----
-
-## R5 · 红队抽检（Q1 闸门官）
-
-**频率**：每日 10:00
-**指令原文**：
-
-```
-这是红队抽检。请执行：
-
-1. cd /workspace/lanes/Q1-gate && git fetch origin && git rebase origin/main
-2. 从 board/sprint.md 中找出昨天新增的 DONE 任务，随机抽取 20%（至少 1 个）
-3. 对每个被抽中的任务：
-   a. 开一个全新的临时 worktree：
-      git worktree add /tmp/redteam-T-XXX <该任务合入后的 commit>
-   b. cd /tmp/redteam-T-XXX && git clean -xfd
-   c. 安装依赖，然后原样执行该任务信封第 6 段的验收命令
-   d. 把实际输出与 evidence/T-XXX/output.txt 比对
-   e. 完成后删除临时 worktree
-4. 判定：
-   - 一致 → 通过
-   - 不一致或命令跑不起来 → 判定为谎报：
-     · 追加一行到 board/trust-ledger.md（日期 / Bot / 任务 / 现象）
-     · 在一对一对话里 @该 Bot 说明，并 @总督
-     · 检查该 Bot 的累计次数：≥2 次 → 通知总督，该 Bot 后续所有产出升级为双人复核
-       ≥4 次 → 在日报里向人类提出停用建议
-5. 检查昨天合并的每个 PR：有没有绕过 G4–G8 中的任何一道？（看 CI 记录）
-6. 写 board/redteam/<date>.md
-
-★ 心态：出问题时先问"哪条 SOP 缺失导致了这个结果"，而不是"哪个 Bot 不行"。
-如果谎报是因为验收命令本身跑不起来（环境问题），那不是谎报，是流程缺陷，
-应该产出一条 SOP 变更提案，而不是记账本。
-```
-
----
-
-## R6 · 规格漂移检测（S1 典藏官）
-
-**频率**：每日 14:00
-**指令原文**：
-
-```
-这是规格漂移检测。请执行：
-
-1. cd /workspace/lanes/S1-scribe && git fetch origin && git rebase origin/main
-2. 三类检查：
-
-   【A. 代码 vs 规格】
-   - docs/01-game/feel-spec.md 的帧数据表 ↔ packages/content/combat/frames/*.json
-     逐项比对每一个前摇/判定/后摇/取消窗口/伤害系数/破防值
-   - docs/01-game/gdd-economy.md 的公式与数值 ↔ packages/content/economy/**
-   - docs/02-tech/architecture.md 的性能预算 ↔ CI 里实际的断言阈值
-   - 契约文档里的字段名 ↔ packages/protocol/ 里的实际 schema
-
-   【B. 文档 vs 文档】
-   - 扫描所有 docs/**.md，找对同一件事的矛盾描述
-   - 重点：gdd-core.md、feel-spec.md、gdd-economy.md、architecture.md 之间
-
-   【C. 术语一致性】
-   - 对照 docs/00-charter/glossary.md，找未定义的新术语和同义词混用
-   - 对照项目术语表的「常见误用」列；该表由项目维护，见 board/drift.md
-
-3. 把发现写入 board/drift.md（覆盖写），格式：
-   | 类型 | 位置 A | 位置 B | 矛盾内容 | 责任方 | 发现日期 |
-
-4. 对每一条 @对应的责任方，要求 24 小时内消除
-   ★ 宪法要求：要么改代码，要么改规格，不许两者并存。
-   ★ 我只负责发现和标记，绝不自行修改规格内容。
-
-5. 如果 drift.md 里有超过 48 小时未消除的条目 → @总督，进日报风险区
-```
-
----
-
-## R7 · 环境健康巡检（O1 运维官）
-
-**频率**：每日 07:00
-**指令原文**：
-
-```
-这是环境健康巡检。请执行：
-
-1. 检查云电脑：df -h（磁盘）、free -h（内存）、
-   ps aux --sort=-%cpu | head -20（异常进程）、ss -tlnp（端口占用）
-2. 检查 /workspace/lanes/ 下每个 worktree 是否健康（git status 无损坏）
-3. 检查 board/locks.md 是否有僵死的锁
-4. 检查 CI runner 状态与最近 24 小时的 CI 成功率
-5. 检查备份：最近一次成功备份是什么时候？
-6. 磁盘 >80% → 清理 node_modules 缓存与临时 worktree，并在报告里说明清理了什么
-7. 写 board/infra-health.md
-
-★ 任何破坏性操作前先确认有备份。
-★ 杀死僵尸进程时必须记录：进程名、PID、占用资源、归属哪个 Bot。
-★ 如果发现某个 Bot 反复制造资源问题，不要自己憋着，@总督，这可能是流程缺陷。
-```
-
----
-
-## R8 · Sprint 规划（P0 总督）
-
-**频率**：每周一 09:00
-**指令原文**：
-
-```
-这是 Sprint 规划。请在常委会群里主持：
-
-1. 先复盘上周：上周的任务里，有多少推进了里程碑放行条件？
-   ★ 完成任务数不是 KPI。放行条件的完成项数才是。
-   如果上周做了很多事但没推进任何放行条件 → 明确说出来"上周白干"，写进回顾。
-2. 展示当前里程碑的放行条件清单，标出已完成/未完成
-3. @架构 先讲：本周要做的事，契约齐了吗？没齐的先出契约。
-   ★ 顺序不能反：先契约，后实现任务。
-4. @设计（M1 起）讲：本周的规格有没有还是形容词状态的？有就先转成数字。
-5. 挑选本周任务，写进 board/sprint.md，每条注明它对应哪条放行条件
-6. 检查每条任务能否写出验收命令。写不出的，本周先做"把规格写清楚"这件事
-7. 建立本周需要的工段群（Cell-xxx），成员 3–4 人，特性完成后立即解散
-8. 更新常委会的轮值席（按 bot-profiles.md 的轮值表）
-
-时长控制：这个会不应该超过 20 条消息。超了说明在做技术讨论，转 ADR。
-```
-
----
-
-## R9 · Demo + 回顾（P0 总督）
-
-**频率**：每周五 16:00（Demo）与 17:00（回顾）
-**指令原文**：
-
-```
-【16:00 Demo】
-1. 要求出一个可玩构建（M1 起），部署到 staging
-2. 录一段 2–3 分钟的操作录屏
-3. 汇编 board/demos/<week>.md：本周新增了什么、看起来/玩起来怎么样、还差什么
-4. @设计 必须亲自玩一遍并写 board/fun-audit/
-
-【17:00 回顾】在常委会群里主持，四个问题，每人必答：
-1. 这周什么流程卡住了我？（不是"什么技术难题"，是"什么流程"）
-2. 我这周有没有做过"明明知道不对但流程没拦住我"的事？
-3. 这周我们可以删掉什么？（代码、内容、系统、流程，都算。宪法第十八条）
-4. 如果下周重来一次，哪一条 SOP 应该长得不一样？
-
-产出（缺一不可）：
-- board/retros/<week>.md（由 @典藏 记录，只记：决定/负责人/期限/依据）
-- ★ 至少 1 条 SOP 变更 PR（改 docs/03-process/ 或 docs/04-grokbot/skills/ 下的文件）
-  连续两周产出不了 SOP 变更 → 说明回顾流于形式，我记自己一次过，并在日报里向人类报告。
-- 更新 board/trust-ledger.md 的本周小结
-```
-
----
-
-## R10 · CI 失败事件触发（Q1 闸门官）
-
-**触发**：GitHub 事件（main 分支 CI 失败）
-> 需要在 Cursor 账号里连接 GitHub 集成（与 Plugins 里的 GitHub 连接器不同，可能需要单独授权）。
-> 如果事件触发不可用，退化为每小时轮询一次 `gh run list --branch main --status failure`。
-
-**指令原文**：
-
-```
-main 分支的 CI 失败了。这是最高优先级事件。
-
-1. 立刻拉安灯绳：在 board/andon.md 追加一条，@总督 和相关 Bot
-2. 全线停止接新任务
-3. 查明失败原因：gh run view <id> --log-failed
-4. 定位是哪个 PR 引入的：git log --oneline -10
-5. 判断：
-   - 能在 30 分钟内修好 → 让引入者立刻修
-   - 不能 → 立刻 revert 那个 PR，让 main 恢复绿色，然后再慢慢修
-   ★ main 保持绿色的优先级高于任何单个特性
-6. 修复后关闭安灯，并写 board/escapes/<id>.md：
-   哪道闸门本该拦住它？为什么没拦住？应该新增什么检查？
-```
-
----
-
-## R11 · 经济模拟闸门（C1 经济师，M5 起）
-
-**频率**：每日 03:00 + 每次经济数值 PR 触发
-**指令原文**：
-
-```
-这是经济模拟闸门。请执行：
-
-1. cd /workspace/lanes/C1-econ && git fetch origin && git rebase origin/main
-2. pnpm -C packages/econ-sim run simulate -- --agents 10000 --days 365 --seed daily
-3. 检查项目经济规格里定义的全部稳定性判据。典型形态（具体阈值由项目定）：
-   年化通胀率在带内 / 人均持有量能进稳态 / 基尼系数有上限 /
-   算法定价不长期贴边 / 低强度玩家长期财富增长>0 /
-   脚本账号 ROI 不显著高于正常玩家 / 物品中位价长期波动在带内 /
-   绑定货币与自由货币不高度相关
-4. 写 board/econ-reports/<date>.md，附曲线图
-5. 任一项出带：
-   - @总督，进日报风险区
-   - 如果是某个 PR 引入的，标记该 PR 不可合并
-   ★ 模拟不过，改动不许进主干。这是硬闸门，不接受"先上线再观察"。
-```
-
----
-
-## Routine 总表
-
-| # | 所有者 | 触发 | M0 必需 |
+| ID | Owner | When | What it runs |
 |---|---|---|---|
-| R1 心跳 | 全体 | 每 2h（09–23） | ✅ |
-| R2 停摆巡检 | P0 | 每 3h | ✅ |
-| R3 晨会派单 | P0 | 每日 08:30 | ✅ |
-| R4 日报 | P0 | 每日 21:00 | ✅ |
-| R5 红队抽检 | Q1 | 每日 10:00 | ✅ |
-| R6 漂移检测 | S1 | 每日 14:00 | ✅ |
-| R7 环境巡检 | O1 | 每日 07:00 | 建议 |
-| R8 Sprint 规划 | P0 | 周一 09:00 | ✅ |
-| R9 Demo + 回顾 | P0 | 周五 16:00 / 17:00 | ✅ |
-| R10 CI 失败响应 | Q1 | GitHub 事件 | 建议 |
-| R11 经济模拟闸门 | C1 | 每日 03:00 + PR | M5 起 |
+| R1 | O1 | 07:00 daily | Environment check |
+| R2 | P0 | 08:30 daily | Dispatch |
+| R3 | P0 | every 3h, 09–21 | Stall check |
+| R4 | Q1 | 10:00 daily | Sampling |
+| R5 | S1 | 14:00 daily | Drift check |
+| R6 | P0 | 21:00 daily | Report to the human |
+| R7 | Q1 | on CI failure | Respond within 30 minutes |
+| R8 | P0 | Monday 09:00 | Sprint planning |
+| R9 | P0 | Friday 16:00 and 17:00 | Demo, then retrospective |
+| R10 | C1 | 03:00 daily, from M4 | Economy simulation |
 
-**总量核算**：M0 阶段 5 个 Bot × 1 条心跳 + P0 的 4 条 + Q1 的 2 条 + S1 的 1 条 + O1 的 1 条 = 13 条。
-远低于每 Bot 50 条上限。
+---
+
+## Prompts
+
+**R1 · Environment check**
+> Check CI health, disk space, and stale locks (`node tools/lock.mjs list`). Report only
+> problems. A lock older than four hours: report it, do not break it.
+
+**R2 · Dispatch**
+> For each task starting today, write `board/tasks/T-XXX.md` with all eight sections, a
+> named reviewer who is not the assignee, and an acceptance command that exits zero when the
+> task is done. Add it to `board/backlog.md`. Assign it in the room.
+
+**R3 · Stall check**
+> Run `node tools/board/stall.mjs`. Say nothing if it reports nothing. For each alerting
+> lane, ask the agent directly; no answer within thirty minutes means write the blocker
+> report on their behalf and reassign.
+
+**R4 · Sampling**
+> Follow `/sop-review`, sampling section. 20% of yesterday's finished tasks, plus every pull
+> request that carried the `lane-override` label. Record in `board/trust-ledger.md`.
+
+**R5 · Drift check**
+> Compare numbers, terms, and reality across the specification documents. Report findings to
+> `board/drift.md` and name both sides. Write nothing on a clean day. Do not decide which
+> side is right — that belongs to the specification's owner.
+
+**R6 · Report to the human**
+> Run `node tools/board/status.mjs`. Add what the table cannot show: what is at risk, and at
+> most three decisions needed. If there are more than three, decide the rest yourself and
+> record the reasoning in `board/decisions/`.
+
+**R7 · CI failure response**
+> Within 30 minutes: fix, revert, or pull the andon cord. Nothing merges while the default
+> branch is red. If it stays red for an hour, it is an andon pull regardless of cause.
+
+**R8 · Sprint planning**
+> One question: what is the smallest thing that would be playable by Friday? Output cards on
+> the backlog, each with a reviewer. Twenty-five messages maximum.
+
+**R9 · Demo, then retrospective**
+> Demo: something runs — a recording, a screenshot, a log. Not slides.
+> Retrospective: what broke, which gate should have caught it, what got slower, what should
+> be deleted. The required output is a process change, preferably a deletion. "Nothing needs
+> changing" is acceptable twice in a row; the third time, raise it with the human.
+
+**R10 · Economy simulation**
+> Run the simulation over the current data. Compare against the prediction recorded when the
+> last change merged. Report the difference, not the absolute numbers.
+
+---
+
+## Rules for routines
+
+**Two of these produce nothing on a good day, on purpose.** R1 and R5 are silent unless
+they find something. A recurring report that says "all fine" every day stops being read
+within a week — and then it is also not read on the day it says something else.
+
+**One owner each.** A routine two bots run is a routine that gets done twice or not at all.
+
+**Adding one requires an incident.** Same rule as any other framework change: name the
+failure it would have caught, with a date. Routines are the cheapest thing to add and among
+the most expensive to carry, because every one of them consumes attention forever.
+
+**Deleting one requires only that it has been useless for a month.** Deletions are cheap;
+say so at the retrospective and remove it.

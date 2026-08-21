@@ -1,40 +1,43 @@
-# 看板（Board）
+# The board
 
-这是项目的**黑板**——所有 Bot 的状态、任务、警报都写在这里，且在 git 里，因此可 diff、可回滚、可审计。
+Only two things here are written by hand: what the work *is*, and what order it goes in.
+Everything else is derived.
 
-**分区写入原则**：每个 Bot 只能写自己那一格（见 `@studio/docs/03-gates/ownership-schema.md`）。这是共享单机下唯一能防止互相覆盖的办法。
-
-## 目录
-
-| 文件/目录 | 内容 | Owner | 更新频率 |
-|---|---|---|---|
-| `daily-brief.md` | **人类每天只看这个** | P0 | 每日 21:00 |
-| `sprint.md` | 唯一的任务真相（状态机） | P0 | 每日 |
-| `tasks/T-XXX.md` | 任务信封（八段） | P0 | 派单时 |
-| `heartbeat/<代号>.md` | 各 Bot 的心跳 | 各自 | 每 2 小时 |
-| `stall-report.md` | 停摆巡检结果 | P0 | 每 3 小时 |
-| `andon.md` | 安灯记录（全线停工警报） | 任何人追加 | 触发式 |
-| `blockers/T-XXX.md` | 三振出局的阻塞报告 | 任何人 | 触发式 |
-| `locks.md` | 全局资源锁 | 任何人（自己那行） | 触发式 |
-| `trust-ledger.md` | 信任账本（谎报/越界/超时） | Q1 | 触发式 |
-| `redteam/<date>.md` | 红队抽检报告 | Q1 | 每日 |
-| `escapes/<id>.md` | 缺陷逃逸分析 | Q1 | 每次事故 |
-| `drift.md` | 规格漂移 | S1 | 每日 |
-| `minutes/<date>.md` | 常委会与回顾纪要 | S1 | 会后 |
-| `retros/<week>.md` | 周回顾 + SOP 变更清单 | P0 | 每周五 |
-| `demos/<week>.md` | 周 Demo 汇编 | P0 | 每周五 |
-| `milestones/<M>.md` | 里程碑收敛报告 + 品味评分 | P0 | 里程碑结束 |
-| `fun-audit/<date>.md` | 乐趣审计（D1 亲自试玩后写） | D1 | 每周 ≥1 |
-| `econ-reports/<date>.md` | 经济模拟报告 | C1 | 每日（M5 起） |
-| `telemetry/<week>.md` | 遥测周报 | T1 | 每周（M5 起） |
-| `infra-health.md` | 环境健康 | O1 | 每日 |
-
-## 阅读优先级（给人类）
-
+```bash
+node tools/board/status.mjs   # where every task stands, from git and CI
+node tools/board/stall.mjs    # lanes that have stopped, and nothing else
 ```
-1. daily-brief.md          ← 每天读这个就够了
-2. andon.md                ← 如果有 OPEN 的，说明出事了
-3. milestones/<M>.md       ← 里程碑验收时
-4. retros/<week>.md        ← 想知道流程在不在改进
-5. trust-ledger.md         ← 想知道哪个 Bot 不靠谱
-```
+
+The previous design kept task status in three files and asked a role to keep them
+synchronised. Nobody can do that reliably, so all three were always slightly wrong, and
+every report built on them inherited the error. Now each fact has exactly one home.
+
+---
+
+| Path | Owner | What it is |
+|---|---|---|
+| `backlog.md` | P0 | The queue, ordered. The only hand-maintained schedule. |
+| `tasks/T-XXX.md` | P0 | Envelopes. Written before work starts, rarely changed after. |
+| `blockers/T-XXX.md` | TASK-AUTHOR | Written at the third failed attempt, instead of a fourth. |
+| `decisions/D-XXX.md` | P0 | Rulings that are not yet ADRs. Every ruling gets one. |
+| `andon.md` | ANYONE | Append-only. The cord. |
+| `drift.md` | S1 | Documents that have started disagreeing. |
+| `trust-ledger.md` | Q1 | Sampling results per agent. |
+| `redteam/` | Q1 | Sampling detail. |
+| `escapes/` | Q1 | Defects that reached the default branch, each naming the gate that missed it. |
+| `retros/` | P0 | Weekly. Required output is a process change. |
+| `milestones/` | P0 | Release checklists, including the human's play session. |
+
+---
+
+## Rules
+
+**Append-shared means append.** In an `ANYONE` file, add your own entry. Editing someone
+else's line is out of lane even there.
+
+**No status fields.** If you find yourself wanting to write "in progress" somewhere, the
+answer is already in git. Adding it here creates a second answer that will disagree.
+
+**Silent on a good day.** Drift and stall reports write nothing when they find nothing. A
+report that says "all fine" every day stops being read within a week — including on the day
+it says something else.

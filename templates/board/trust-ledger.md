@@ -1,56 +1,44 @@
-# 信任账本（Trust Ledger）
+# Trust ledger
 
-> Owner: Q1 闸门官
-> **这不是惩罚簿，是系统学习"哪里需要更紧的闸门"的记录。**
-> 宪法第二十条：出问题时先问"哪条 SOP 缺失导致了这个结果"，而不是"哪个 Bot 不行"。
+Sampling results, per agent. Owned by Q1.
 
----
-
-## 触发规则
-
-| 事件类型 | 定义 | 后果 |
-|---|---|---|
-| **谎报** LIE | 证据包与红队重跑结果不符 | 累计 2 次 → 该 Bot 所有产出升级为双人复核；累计 4 次 → 建议人类停用 |
-| **越界** TRESPASS | 修改了车道外的文件（不含已授权的 LANE-OVERRIDE） | 累计 3 次 → A1 重新审视车道划分是否合理 |
-| **超时** STALL | 被停摆巡检标红 | 累计 2 次 → 撤回任务重派；累计 4 次 → 检查 description 与任务粒度 |
-| **契约违反** CONTRACT | 未经 ADR 修改 FROZEN 契约 | 立即拉安灯；1 次即升级为双人复核 |
-
-## 免责情形（不计入账本）
-
-- 验收命令在干净环境跑不起来（这是**流程缺陷**，应产出 SOP 变更提案，不是谎报）
-- 任务信封第 3 段车道与所有权表不一致导致的越界（这是**派单缺陷**，记在总督头上）
-- 因等待他人（已在心跳中写明 `needs_from_others` 并 @ 了对方）导致的超时
-- 拉了安灯但事后证明是误报
+This is not a scoreboard. It answers one question: **can we believe evidence packs without
+re-running them?** If we can, the team moves at full speed. If we cannot, everything needs
+verifying and the whole framework's throughput collapses.
 
 ---
 
-## 当前状态
-
-| Bot | 谎报 | 越界 | 超时 | 契约违反 | 当前等级 |
+| Agent | Sampled | Matched | Honest mismatch | Fabricated | Note |
 |---|---|---|---|---|---|
-| *（尚无记录）* | | | | | |
+| | | | | | |
 
-**等级说明**：
-- `NORMAL` — 标准闸门
-- `DOUBLE_REVIEW` — 所有产出需两个评审人
-- `SUSPENDED` — 已停用，等待人类决定重建或重写 description
+**Matched** — the re-run produced the same result as the evidence pack.
 
----
+**Honest mismatch** — different result, but the pack reflected what actually happened at the
+time. Usually a flaky test or an environment difference. This is a bug to fix, not a
+character finding, and it is worth fixing quickly: flakiness is what makes fabrication
+plausible.
 
-## 事件记录
-
-| 日期 | Bot | 类型 | 任务 | 现象 | 处理 | ★ 产出的流程改进 |
-|---|---|---|---|---|---|---|
-| *（暂无）* | | | | | | |
-
-> 最后一列是这张表真正的价值所在。
-> 每一次记录都应该问：**如果流程再紧一点，这件事会不会根本不可能发生？**
-> 能，就去改流程；不能，才是 Bot 的问题。
+**Fabricated** — the pack never reflected any real run.
 
 ---
 
-## 每周小结（回顾时由 Q1 填写）
+## Sampling rate
 
-| 周 | 谎报 | 越界 | 超时 | 契约违反 | 本周产出的闸门改进 |
-|---|---|---|---|---|---|
-| *（暂无）* | | | | | |
+20% of finished tasks, plus **100% of pull requests that carried the `lane-override`
+label** — that label is the one documented path around the lane gate, so it is not sampled,
+it is always checked.
+
+An agent with three consecutive clean samples drops to 10%. One mismatch returns it to 20%.
+The rate is a cost, and lowering it for agents that have earned it is the point of keeping
+this file.
+
+## Fabrication
+
+Reported to the human the same day, and the agent's work is suspended pending that
+conversation.
+
+Everything else in this framework is a process problem to be fixed with a better gate. This
+one is not, and it cannot be, because a team whose reports cannot be trusted has no
+mechanism left to work with — every check would have to be redone by whoever reads it, which
+is the situation the framework exists to escape.
