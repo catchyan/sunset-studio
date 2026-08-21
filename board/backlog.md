@@ -13,7 +13,8 @@ envelopes has already told everyone what its own rules are worth.
 
 | # | Task | Title | Owner | Milestone |
 |---|---|---|---|---|
-| 1 | T-000 | Framework v2: English, derived state, cut unenforced rules | human | S0 |
+| 1 | T-001 | The mount produced a mirror the mirror gate rejects | A1 | S0 |
+| 2 | T-000 | Framework v2: English, derived state, cut unenforced rules | A1 | S0 |
 
 ---
 

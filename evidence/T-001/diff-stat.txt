@@ -1,0 +1,4 @@
+ CHANGELOG.md                   | 10 ++++++++++
+ evidence/T-001/output.txt      |  2 +-
+ tools/gates/envelope-check.mjs | 15 +++++++++++++++
+ 3 files changed, 26 insertions(+), 1 deletion(-)

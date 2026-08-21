@@ -1,0 +1,5 @@
+# Everything is stored and checked out as LF. Projects mount this repository by cloning a
+# tag and hashing the result, so what is stored here has to be identical on every platform —
+# a CRLF checkout on one contributor's machine would produce a mirror that disagrees with
+# everyone else's for no reason anybody could see.
+* text=auto eol=lf

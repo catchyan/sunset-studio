@@ -99,6 +99,21 @@ function checkCommits(taskId, baseRef) {
   }
 
   for (const s of subjects) {
+    // Named before the format complaint, because the character that breaks the match is
+    // usually one you cannot see. A byte-order mark from a Windows editor cost an hour
+    // once: the subject looked exactly right and the gate said it did not match.
+    const invisible = [...s].filter((c) => c.charCodeAt(0) > 126 || c.charCodeAt(0) < 32);
+    if (invisible.length) {
+      const codes = [...new Set(invisible.map((c) => 'U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')))];
+      fail.push(
+        `Commit subject contains characters that are not printable ASCII: ${codes.join(' ')}\n` +
+          `      ${s}\n` +
+          '      A byte-order mark is the usual culprit. Write the message to a file with\n' +
+          '      UTF-8 and no BOM, then: git commit --amend -F <file>'
+      );
+      continue;
+    }
+
     const m = s.match(COMMIT_RE);
     if (!m) {
       fail.push(`Commit subject does not match "<type>(<scope>): <subject> [T-XXX]":\n      ${s}`);

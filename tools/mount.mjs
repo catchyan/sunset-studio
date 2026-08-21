@@ -75,32 +75,9 @@ function main() {
       cpSync(from, to, { recursive: true });
     }
 
-    const files = walk(MIRROR)
-      .map((p) => relative(MIRROR, p).split(sep).join('/'))
-      .filter((p) => p !== 'MANIFEST.json')
-      .sort();
-
-    const manifest = {
-      version,
-      commit: resolved,
-      mountedAt: new Date().toISOString().slice(0, 10),
-      files: Object.fromEntries(files.map((f) => [f, sha256(readFileSync(join(MIRROR, f)))])),
-    };
-
-    writeFileSync(join(MIRROR, 'MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
-    writeFileSync('.studio-version', version + '\n');
-
-    const GA = '.gitattributes';
-    const rule = 'docs/_studio/** -text';
-    const ga = existsSync(GA) ? readFileSync(GA, 'utf8') : '';
-    if (!ga.includes(rule)) {
-      writeFileSync(
-        GA,
-        `${ga}${ga && !ga.endsWith('\n') ? '\n' : ''}# The mirror is verified byte for byte; any line-ending translation defeats that gate\n${rule}\n`
-      );
-      console.log(`   ${GA} -> added "${rule}"`);
-    }
-
+    // Written before the manifest is computed, so it is hashed like everything else.
+    // The mirror gate treats an unlisted file as tampering, and it is right to: a file
+    // nobody hashed is a file anybody can change.
     writeFileSync(
       join(MIRROR, 'README.md'),
       [
@@ -119,6 +96,46 @@ function main() {
         '',
       ].join('\n')
     );
+
+    const files = walk(MIRROR)
+      .map((p) => relative(MIRROR, p).split(sep).join('/'))
+      .filter((p) => p !== 'MANIFEST.json')
+      .sort();
+
+    const manifest = {
+      version,
+      commit: resolved,
+      mountedAt: new Date().toISOString().slice(0, 10),
+      files: Object.fromEntries(files.map((f) => [f, sha256(readFileSync(join(MIRROR, f)))])),
+    };
+
+    writeFileSync(join(MIRROR, 'MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
+    writeFileSync('.studio-version', version + '\n');
+
+    // The mirror gate cannot live inside the mirror it verifies, so it is the one framework
+    // file a project owns a copy of. Shipping it here rather than asking each project to
+    // write its own: the first project to do that got a gate with no upstream comparison,
+    // which is the half that catches a forged manifest.
+    const SYNC = join('tools', 'studio-sync.mjs');
+    const syncTemplate = join(MIRROR, 'templates', 'tools', 'studio-sync.mjs');
+    if (existsSync(syncTemplate)) {
+      mkdirSync('tools', { recursive: true });
+      const before = existsSync(SYNC) ? readFileSync(SYNC) : null;
+      cpSync(syncTemplate, SYNC);
+      const verb = before === null ? 'created' : before.equals(readFileSync(SYNC)) ? 'unchanged' : 'updated';
+      console.log(`   ${SYNC} -> ${verb}`);
+    }
+
+    const GA = '.gitattributes';
+    const rule = 'docs/_studio/** -text';
+    const ga = existsSync(GA) ? readFileSync(GA, 'utf8') : '';
+    if (!ga.includes(rule)) {
+      writeFileSync(
+        GA,
+        `${ga}${ga && !ga.endsWith('\n') ? '\n' : ''}# The mirror is verified byte for byte; any line-ending translation defeats that gate\n${rule}\n`
+      );
+      console.log(`   ${GA} -> added "${rule}"`);
+    }
 
     console.log(`Mounted ${version} (${files.length} files).`);
     console.log('Next: run tools/studio-sync.mjs in CI so the mirror cannot drift.');
