@@ -96,8 +96,9 @@ If the command does not exit zero, you are not finished. There is no partial cre
 Title `<type>(<scope>): <subject> [T-XXX]`. Body: what changed, why, and what you verified.
 Request the reviewer named on the card — never yourself.
 
-They approve by commenting `APPROVED-BY: <their code>`; the gate will not let this merge
-until somebody who is neither you nor the card's owner has done so.
+They approve by submitting a review whose body reads `APPROVED-BY: <their code>`; the gate
+will not let this merge until somebody who is neither you nor the card's owner has done so.
+A plain comment is read but does not re-run the gates, so it lands nowhere.
 
 ## 10. Done means merged
 

@@ -8,6 +8,54 @@ bound.
 
 ---
 
+## v3.0.1 — 2026-08-21
+
+Patch. Two things v3.0.0 got wrong on the first real merge it governed, plus two cosmetic
+fixes. No gate changed its verdict; the docs changed to describe the verdict correctly.
+
+### The approval mechanism was documented as a comment, and a comment does nothing
+
+★ Cause: `sunset-club` PR #2, 2026-08-21. The human's `APPROVED-BY: human` was posted as an
+issue comment. The gate reads issue comments, so the line was valid — but only
+`pull_request_review` re-runs the workflow, so no run ever read it. The approval sat in the
+timeline and the pull request stayed red, with a failure message instructing the reviewer to
+do exactly the thing that had just failed.
+
+- The gate's message now gives the command (`gh pr review <n> --comment --body "..."`) and says
+  outright that a plain comment is read but does not re-run anything.
+- `gates.md`, `sop-task.md`, `setup.md`, and the constitution now say **review**, not comment.
+  `sop-review.md` already did, which is how the discrepancy went unnoticed.
+
+Comments are still read. Narrowing the gate to reviews only would reject an approval that is
+in the timeline and legible, which is a worse failure than the one being fixed.
+
+### A stale run's verdict outlived the condition that caused it
+
+★ Cause: the same pull request. Runs started before the `break-glass` label and before the
+approving review, failed for those reasons, and left their verdicts on the commit. The newest
+run was green on all seven gates and GitHub still reported `BLOCKED`, because labels and the
+timeline are read when a run *starts*.
+
+Protection counts every run on the commit, not the most recent, which is the part that makes
+this expensive: re-running the newest failure is not enough, and on the pull request that
+fixed it three separate runs had to be re-run before the merge button turned green.
+
+- `gates.md` and `sop-review.md` now name the symptom, say to list the runs and re-run each
+  failure with `gh run rerun <id> --failed`, and say not to merge past them with `--admin`.
+
+No mechanism can fix this from inside a workflow: a run cannot invalidate the verdict of a run
+that finished before it. Recognising it is the whole remedy.
+
+### Two cosmetic fixes
+
+- The lane gate printed `task=null` on board branches, which have no task by design. It now
+  prints `board branch`.
+- `mount.mjs` told a freshly mounted project to run `tools/verify-protection.mjs`, which in a
+  project lives at `docs/_studio/tools/verify-protection.mjs`. Copy-pasting the printed line
+  produced a file-not-found on the last step of setup.
+
+---
+
 ## v3.0.0 — 2026-08-21
 
 Major. Three independent audits read the v2.0.1 framework against its own claims before any

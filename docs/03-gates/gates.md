@@ -218,15 +218,28 @@ brake that has ever worked.
 A different agent, after CI is green. The reviewer checks intent against the card, not
 syntax — the machines already did syntax.
 
-The reviewer records it by commenting a line, on its own, reading:
+The reviewer records it by submitting a review whose body holds a line, on its own, reading:
 
 ```
 APPROVED-BY: Q1
 ```
 
 The envelope gate collects every review and comment body on the pull request and requires at
-least one code that is neither the branch's bot nor the card's owner. A review submitted after
-the last push re-runs the gates, so the approval lands without another commit.
+least one code that is neither the branch's bot nor the card's owner.
+
+It must be a **review**, not a plain issue comment. Both are read, but only a review re-runs
+the workflow, and an approval nothing re-reads is an approval nobody collected:
+
+```bash
+gh pr review <n> --comment --body "APPROVED-BY: Q1"
+```
+
+The same applies to labels. A run reads the labels and the timeline as they stood when it
+started, so a run that began before the label or the review keeps its now-obsolete verdict on
+the commit. Protection counts **every** run on the commit, not the most recent one, so one
+stale red run blocks a merge that six green ones allow. List them with
+`gh run list --branch <branch>` and re-run each failure with `gh run rerun <id> --failed`; do
+not merge past them with `--admin`.
 
 **This is auditable, not authenticated.** Every agent drives one GitHub account, so GitHub's
 own review approval can never be satisfied — an account cannot approve its own pull request —
@@ -251,7 +264,7 @@ point:
 - Branch protection requires the `summary` job. A diff that removes it never reports a check
   and can never merge, whatever else it does.
 - The envelope gate refuses any diff touching `.github/workflows/`, `tools/gates/`, or an
-  ownership table unless the human has commented `APPROVED-BY: human`. A compromised gate
+  ownership table unless the human has approved with `APPROVED-BY: human`. A compromised gate
   could skip this check — which is the point: the human is the reviewer *outside* the loop,
   and the rule tells them which diffs they must not wave through.
 - `tools/verify-protection.mjs` reads the live protection from outside the repository, on the

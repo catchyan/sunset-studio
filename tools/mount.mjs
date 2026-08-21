@@ -198,7 +198,7 @@ function main() {
     console.log(`Mounted ${version} (${files.length} files).`);
     console.log('Next:');
     console.log('  1. node tools/studio-sync.mjs --remote');
-    console.log('  2. node tools/verify-protection.mjs   (branch protection must require the "summary" job)');
+    console.log('  2. node docs/_studio/tools/verify-protection.mjs   (protection must require the "summary" job)');
     return 0;
   } catch (err) {
     console.error(`Mount failed: ${err.message}`);
