@@ -1,0 +1,3 @@
+﻿node tools/gates/gates.test.mjs
+node tools/gates/selfcheck.mjs
+node tools/gates/spec-check.mjs

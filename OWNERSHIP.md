@@ -26,6 +26,7 @@
 | `docs/05-studio/versioning.md` | P0 | |
 | `playbooks/**` | P0 | |
 | `templates/**` | P0 | |
+| `templates/tools/studio-sync.mjs` | Q1 | The mirror gate every project runs. More specific than the row above |
 | `tools/gates/**` | Q1 | Changing a gate means changing its test in the same PR |
 | `tools/board/**` | P0 | |
 | `tools/lock.mjs` | O1 | |
@@ -36,6 +37,7 @@
 | `CHANGELOG.md` | ANYONE | Append your own entry, each with a `★` cause. P0 organises at release. |
 | `.github/workflows/**` | Q1 | A1 may countersign |
 | `.gitignore` | O1 | |
+| `.gitattributes` | O1 | Line endings. The mount depends on this repository storing LF |
 
 ---
 
