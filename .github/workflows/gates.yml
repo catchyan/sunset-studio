@@ -1,0 +1,68 @@
+name: gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  discipline:
+    name: G5 车道
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 提取 Bot 代号
+        id: bot
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ ^lane/([A-Z][0-9])/ ]]; then
+            echo "code=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::分支名必须是 lane/<代号>/<描述>，当前是 $BRANCH"
+            exit 1
+          fi
+
+      - name: G5 车道闸门
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node tools/gates/lane-check.mjs "${{ steps.bot.outputs.code }}" "origin/${{ github.base_ref }}"
+
+      # 制度改动必须有事故背书，否则流程会往"看起来严谨"的方向无限膨胀
+      - name: 铁律二 · SOP/闸门变更需事故背书
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if echo "$CHANGED" | grep -qE '^docs/04-grokbot/skills/|^docs/03-gates/'; then
+            if ! echo "$PR_BODY" | grep -q '★'; then
+              echo "::error::改动了 SOP 或闸门，但 PR 描述里没有 ★ 起因。"
+              echo "章程铁律二：制度的改动必须来自真实事故。"
+              echo "请回答：这条改动是哪一次真实的失败促成的？（日期 / 任务号 / 事故记录链接）"
+              exit 1
+            fi
+          fi
+
+  checks:
+    name: 自检与闸门自测
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 闸门本身也需要被测试。第一次运行它时它就抓出了 glob 的 bug——
+      # 一道假装在工作的闸门比没有闸门更危险，因为所有人都以为自己被保护着。
+      - name: 车道闸门自测
+        run: node tools/gates/lane-check.test.mjs
+
+      - name: 仓库自检（死链 / SOP 引用 / 术语 / 铁律一）
+        run: node tools/gates/selfcheck.mjs
