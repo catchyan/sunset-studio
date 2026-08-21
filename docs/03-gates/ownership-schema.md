@@ -1,130 +1,103 @@
-# 路径所有权表（Ownership）
+# 车道所有权表 · 格式与规则
 
-> 状态：ACTIVE v1.0 · 所有者：总架构师(A1)
+> Owner: Q1 闸门官（格式变更需 A1 联署）
+> **这里定义表长什么样。表的内容归各项目自己写**（项目仓库 `docs/03-process/ownership.md`）。
+>
 > 本表是 G5 车道闸门的唯一依据，也用于生成 `.github/CODEOWNERS`。
 > **越界修改不看内容直接拒绝**（宪法第四条）。
 
 ---
 
-## 规则
+## 1. 为什么直接解析 markdown
 
-1. 每条路径**有且只有一个** owner。没有共管（联署除外，见下）。
-2. Bot 只能修改自己 owner 的路径。
-3. 需要改别人的路径 → 请对方改；或在群里申请授权，PR 描述里写：
-   ```
-   LANE-OVERRIDE: packages/protocol/src/combat-events.ts (approved by @A1 in <消息链接>)
-   ```
-4. 本表本身由 A1 维护；A1 修改本表需 P0 联署。
-5. 新增 Bot 或新增顶层目录时，**必须先更新本表**，再开工。
+闸门工具直接解析这份 markdown 表格，**不另建一份 JSON 配置**。
 
----
+多一份配置就多一处会漂移的真相。两份东西只要能分别修改，它们就一定会在某天不一致，
+而且不一致的那天没人会察觉——直到某个 Bot 的越界被静默放行。
 
-## 所有权表
+代价是解析要健壮一点。这个代价值得付。
 
+## 2. 格式
+
+```markdown
 | 路径 glob | Owner | 备注 |
 |---|---|---|
-| `@studio/docs/00-charter/constitution.md` | **人类** | 任何 Bot 不得修改 |
-| `docs/00-charter/vision.md` | **人类** | 任何 Bot 不得修改 |
-| `@studio/docs/00-charter/glossary.md` | S1 | |
-| `docs/README.md` | S1 | |
-| `docs/01-game/gdd-core.md` | D1 | |
-| `docs/01-game/feel-spec.md` | D1 | 帧数据表变更需 CI 快照同步 |
-| `docs/01-game/gdd-encounters.md` | D1 | |
-| `docs/01-game/gdd-economy.md` | C1 | |
-| `docs/01-game/econ-dashboard.md` | C1 | |
-| `docs/01-game/gdd-world.md` | N1 | |
-| `docs/01-game/art-bible.md` | V1 | |
-| `docs/01-game/audio-bible.md` | U1 | |
-| `docs/01-game/telemetry-spec.md` | T1 | |
-| `docs/02-tech/**` | A1 | 含 contracts/ 与 adr/ |
-| `docs/02-tech/adr/INDEX.md` | S1 | 例外：索引由典藏官维护 |
-| `docs/02-tech/infra.md` | O1 | 例外 |
-| `docs/02-tech/backup.md` | O1 | 例外 |
-| `@studio/docs/01-framework/framework.md` | P0 | |
-| `@studio/docs/02-roles/roles.md` | P0 | |
-| `@studio/docs/01-framework/cadence.md` | P0 | |
-| `@studio/docs/03-gates/ownership-schema.md` | A1 | 需 P0 联署 |
-| `@studio/docs/03-gates/gates.md` | Q1 | |
-| `docs/04-plan/**` | P0 | 里程碑定义变更需人类批准 |
-| `docs/04-grokbot/**` | P0 | SOP 变更需 Q1 复核 + 人类批准 |
 | `packages/sim/**` | E1 | |
 | `packages/client/**` | E2 | |
 | `packages/client/src/render/**` | V1 | 例外：渲染管线归视觉总监 |
-| `packages/client/src/audio/**` | U1 | 例外 |
-| `packages/server/**` | E3 | |
-| `packages/protocol/**` | A1 | E3 可联署 |
-| `packages/content/combat/**` | D1 | |
-| `packages/content/economy/**` | C1 | |
-| `packages/content/narrative/**` | N1 | |
-| `packages/content/i18n/**` | N1 | |
-| `packages/content/schema/**` | A1 | |
-| `packages/econ-sim/**` | C1 | |
-| `packages/telemetry/**` | T1 | |
-| `packages/shared/**` | A1 | |
-| `assets/audio/**` | U1 | |
-| `assets/**`（其余） | V1 | |
-| `tools/art-lint/**` | V1 | |
-| `tools/asset-gen/**` | V1 | |
-| `tools/gates/**` | Q1 | |
-| `tools/bootstrap/**` | O1 | |
-| `tools/lanes/**` | O1 | |
-| `tools/board/**` | P0 | |
-| `deploy/**` | O1 | |
-| `deploy/server/**` | E3 | 例外 |
-| `.github/workflows/**` | Q1 | A1 可联署 |
-| `.github/CODEOWNERS` | A1 | 由本表生成 |
-| `package.json` | A1 | 根目录构建配置 |
-| `pnpm-workspace.yaml` | A1 | |
-| `pnpm-lock.yaml` | A1 | 改动需说明原因 |
-| `tsconfig*.json` | A1 | |
-| `vite.config.*` | A1 | |
-| `AGENTS.md` | P0 | |
-| `README.md` | P0 | |
-| `.gitignore` | O1 | |
-| `board/sprint.md` | P0 | |
-| `board/tasks/**` | P0 | |
-| `board/daily-brief.md` | P0 | |
-| `board/stall-report.md` | P0 | |
-| `board/demos/**` | P0 | |
-| `board/retros/**` | P0 | 由 S1 起草，P0 定稿 |
-| `board/minutes/**` | S1 | |
-| `board/drift.md` | S1 | |
-| `board/trust-ledger.md` | Q1 | |
-| `board/redteam/**` | Q1 | |
-| `board/escapes/**` | Q1 | |
-| `board/econ-reports/**` | C1 | |
-| `board/telemetry/**` | T1 | |
-| `board/fun-audit/**` | D1 | |
-| `board/infra-health.md` | O1 | |
-| `board/heartbeat/*.md` | 各自 | **只能写与自己代号同名的那一个文件**；由 CI 按分支上的 Bot 代号校验 |
-| `board/econ-proposals/**` | C1 | |
-| `board/salvage/**` | O1 | 车道清理时抢救出来的未提交内容 |
-| `board/milestones/**` | P0 | |
-| `board/blockers/**` | 任何人 | 追加自己的阻塞报告 |
-| `board/andon.md` | 任何人 | **追加**（不许删别人的条目）；只有 P0 能改状态为 CLOSED |
-| `board/locks.md` | 任何人 | 只能追加/删除**自己**那一行 |
-| `evidence/T-XXX/**` | 该任务的负责人 | |
-
----
-
-## M0 阶段的临时安排
-
-M0 只有 5 个 Bot（P0/A1/Q1/S1/O1），但需要建 `packages/` 骨架。临时规定：
-
-- `packages/**` 在 M0 阶段全部归 **A1**
-- M1 扩编时，A1 按上表把车道正式移交给 E1/E2
-- 移交时必须写一条 ADR 记录移交范围
-
----
-
-## 生成 CODEOWNERS
-
-```bash
-pnpm tools:gen-codeowners
 ```
 
-把本表转换成 `.github/CODEOWNERS`。GitHub 会据此自动请求评审。
+- 第一列必须用反引号包裹 glob
+- 第二列是 Bot 代号或下面的特殊 owner，`**粗体**` 会被忽略
+- 只支持 `*`（不跨 `/`）和 `**`（跨层级）两种通配
 
-> 注意：GitHub CODEOWNERS 需要真实的 GitHub 账号。由于 Bot 共用一个人类账号提交，
-> CODEOWNERS 在本项目里主要起**文档作用**，真正的强制来自 CI 的 `gates:lane`。
-> 这是刻意的设计：**不要依赖 GitHub 的机制，依赖我们自己能控制的 CI 检查。**
+## 3. 匹配规则
+
+**最长（最具体）的 glob 获胜。**
+
+表里会有大量"例外"行：`packages/client/**` 归 E2，但 `packages/client/src/render/**` 归 V1。
+具体的必须赢，否则例外行写了等于没写。
+
+## 4. 特殊 owner
+
+| Owner | 含义 |
+|---|---|
+| `人类` | 任何 Bot 不得修改。宪法、章程、愿景这类文件 |
+| `任何人` | 追加式共享。安灯、锁、CHANGELOG 这类**每个人都需要往里加东西**的文件 |
+| `各自` | 每人只能写与自己代号同名的那一个文件（心跳） |
+| `框架` | 工作室框架只读镜像。**只能作为升级 `.studio-version` 的一部分整体地变** |
+
+### 关于 `任何人`
+
+判断一个文件该不该是 `任何人`，问一句：**它是不是每个人在正常工作中都需要往里加东西？**
+
+是的话就必须共享。否则每次都要申请越界授权，而**烦的规矩会被绕过**——
+真实结果不会是"大家老实申请授权"，而是"大家渐渐不写了"。
+
+规则：只能追加自己的条目，不能改别人的。
+
+### 关于 `框架`
+
+不用 `人类`，因为那会把**唯一一条合法的修改路径**（升级钉住的版本）也堵死，
+于是升级只能靠 admin 强推。**一条必须被绕过才能工作的规则，等于教所有人规则是可以绕的。**
+
+G5 只管"改法对不对"（有没有同时改 `.studio-version`），
+改完的内容是否真的等于那个版本，由 G0 逐字节核对。两道分工明确，都别越权。
+
+## 5. 使用规则
+
+1. 每条路径**有且只有一个** owner。没有共管（联署除外）。
+2. Bot 只能修改自己 owner 的路径。
+3. 需要改别人的路径 → 请对方改；或申请授权，PR 描述里写：
+   ```
+   LANE-OVERRIDE: packages/protocol/src/combat-events.ts (approved by @A1 in <消息链接>)
+   ```
+   ⚠️ 授权对 `人类` 路径无效。那些文件没有任何 Bot 侧的绕行方式。
+4. 本表由 A1 维护；A1 修改本表需 P0 联署。
+5. 新增 Bot 或新增顶层目录时，**必须先更新本表**，再开工。
+
+## 6. 每个项目必须为自己的表写断言
+
+**没有断言的车道表不可信。**
+
+车道表写错会导致两种故障，都不容易诊断：
+
+| 错法 | 症状 |
+|---|---|
+| 划分太粗 | 两个 Bot 抢同一批文件，天天冲突 |
+| 有遗漏 | 出现"无归属"路径，任何人改都被拒，任务永远做不完 |
+
+照着工作室的 `tools/gates/lane-check.test.mjs` 第三节，为本项目关键路径写一组断言并跑通。
+
+> 这不是形式主义。框架自己的那份断言第一次运行就抓出了尾部 `/**` 匹配不到任何深层文件的 bug——
+> 也就是说在那之前，G5 会静默放行**全部**越界。
+> **一道假装在工作的闸门，比没有闸门更危险**，因为所有人都以为自己被保护着。
+
+## 7. 生成 CODEOWNERS
+
+本表可转换成 `.github/CODEOWNERS`，GitHub 会据此自动请求评审。
+
+> ⚠️ CODEOWNERS 需要真实的 GitHub 账号。由于 Bot 共用一个人类账号提交，
+> 它在这里主要起**文档作用**，真正的强制来自 CI 的 G5。
+>
+> 这是刻意的：**不要依赖我们控制不了的机制。**
