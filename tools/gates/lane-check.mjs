@@ -21,6 +21,11 @@ const OWNERSHIP =
   process.env.OWNERSHIP_FILE ?? CANDIDATES.find((p) => existsSync(p)) ?? CANDIDATES[1];
 const ANYONE = new Set(['任何人']);
 const HUMAN = '人类';
+// 框架镜像有唯一一种合法改法：升级钉住的版本。
+// 标成「人类」会把这条唯一的路也堵死，于是升级只能靠 admin 强推——
+// 一条必须被绕过才能工作的规则，等于教所有人规则是可以绕的。
+const MIRROR = '框架';
+const PIN = '.studio-version';
 
 export function parseOwnership(md) {
   const rows = [];
@@ -98,6 +103,20 @@ function main() {
     }
     if (row.owner === HUMAN) {
       violations.push({ file, owner: HUMAN, why: '宪法保留文件，任何 Bot 不得修改。' });
+      continue;
+    }
+    // 镜像可以变，但只能作为"升级钉住版本"的一部分整体地变。
+    // 内容是否真的等于那个版本，由 G0 逐字节核对，这里只管"改法对不对"。
+    if (row.owner === MIRROR) {
+      if (!changed.includes(PIN)) {
+        violations.push({
+          file,
+          owner: MIRROR,
+          why:
+            `框架镜像只能通过升级 ${PIN} 来改，本次 diff 里没有它。\n` +
+            '      想改制度：去工作室仓库提 PR → 发新版本 → 在本仓库重新挂载。',
+        });
+      }
       continue;
     }
     // "各自"意味着每人只能写与自己代号同名的那个文件。

@@ -69,7 +69,23 @@ for (const [file, want] of S) {
 // 无归属必须是可检测的状态，不能悄悄放行
 check(resolve('unknown/path.txt', synthetic) === null, '未覆盖路径返回 null（会被判为无归属）');
 
-// ─────────────────── 3. 工作室自己的所有权表 ───────────────────
+// ─────────────────── 3. 框架镜像的特殊规则 ───────────────────
+// 镜像只能作为"升级钉住版本"的一部分整体地变。
+// 这条规则如果写错，要么升不了级（必须 admin 强推），要么谁都能偷改制度。
+console.log('\n【框架镜像 owner=框架】\n');
+
+const mirrorRows = parseOwnership(`
+| 路径 glob | Owner |
+|---|---|
+| \`docs/_studio/**\` | 框架 |
+| \`.studio-version\` | A1 |
+`);
+check(resolve('docs/_studio/docs/00-charter/constitution.md', mirrorRows)?.owner === '框架',
+  '镜像深层文件解析为「框架」');
+check(resolve('.studio-version', mirrorRows)?.owner === 'A1',
+  '.studio-version 本身有正常 owner（否则升级时它自己会越界）');
+
+// ─────────────────── 4. 工作室自己的所有权表 ───────────────────
 // 本文件会被镜像进各个项目仓库，在那里跑时只该测引擎（上面两节）。
 // 项目自己的表由项目写断言，见 playbooks/new-project.md 阶段 2。
 const IN_STUDIO = existsSync('docs/00-charter/studio-charter.md');
