@@ -5,7 +5,7 @@ name: gates
 # `summary`, which is the one check branch protection watches.
 #
 # Branch protection must require the JOB name `summary`, not the workflow name
-# `gates`. Verify it from outside with: node docs/_studio/tools/verify-protection.mjs
+# `gates`. Verify it from outside with: node tools/verify-protection.mjs
 
 on:
   pull_request:

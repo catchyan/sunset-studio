@@ -33,9 +33,15 @@ curl -fsSL "https://raw.githubusercontent.com/<owner>/sunset-studio/$V/tools/mou
 node mount.mjs --version "$V" && rm mount.mjs
 ```
 
-Creates `.studio-version` and `docs/_studio/`, installs `tools/studio-sync.mjs` and
-`.github/workflows/gates.yml`, and adds the `-text` rule to `.gitattributes`. Commit them
-together, then:
+Creates `.studio-version` and `docs/_studio/`, installs `tools/studio-sync.mjs`,
+`.github/workflows/gates.yml` and the launchers, and adds the `-text` rule to `.gitattributes`.
+
+The launchers are four one-line files — `tools/lock.mjs`, `tools/board/status.mjs`,
+`tools/board/stall.mjs`, `tools/verify-protection.mjs` — each forwarding to the same path
+inside the mirror. They exist so the command printed in an SOP is the command that runs in a
+project: the implementations are in the mirror, the mirror is verified byte for byte and so
+cannot be rewritten on the way in, and an agent that has to work out its own prefix will work
+it out wrong at the worst moment. Commit everything the mount produced together, then:
 
 ```bash
 node tools/studio-sync.mjs --remote
@@ -125,9 +131,18 @@ agents editing the same file impossible rather than merely forbidden.
 
 ## 9. Prove it works
 
-**Positive:** dispatch one trivial task on a `board/P0/<slug>` branch, merge the card, then
-take it through `/sop-task` to merge. Every gate green, no override, evidence pack present,
-one `APPROVED-BY` from someone who is not the author.
+**Positive:** first, that the commands the SOPs print actually run here:
+
+```bash
+node tools/lock.mjs list
+node tools/board/status.mjs
+node tools/board/stall.mjs
+node tools/verify-protection.mjs
+```
+
+Then dispatch one trivial task on a `board/P0/<slug>` branch, merge the card, and take it
+through `/sop-task` to merge. Every gate green, no override, evidence pack present, one
+`APPROVED-BY` from someone who is not the author.
 
 **Negative — the part people skip.** A gate nobody has watched fail is a gate nobody knows
 works:
