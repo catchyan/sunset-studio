@@ -8,7 +8,7 @@ on:
 
 jobs:
   discipline:
-    name: G5 车道
+    name: lane
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -51,7 +51,7 @@ jobs:
           fi
 
   checks:
-    name: 自检与闸门自测
+    name: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
