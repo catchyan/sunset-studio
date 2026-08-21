@@ -34,7 +34,20 @@ whenever somebody eventually notices, which is always later than this.
   It was ready to look ready.
 - Repair: T-002, merged under `break-glass` because a framework this broken cannot be
   repaired through the gates it broke.
-- Status: OPEN
+- Status: CLOSED at 2026-08-21T08:30:00Z
+- What was actually wrong: the framework had never been used. Every gate had been read and
+  none had been watched fail, so the defects were all in the gap between what a document
+  said a gate did and what the program did. The branch protection failure was worse than
+  that: it was in the gap between the repository and its configuration, where no gate can
+  look at all.
+- What was done: framework v3.0.0. Four bypasses closed, peer review given an enforcement
+  mechanism, three deadlocks opened, break-glass added, and the one check that has to run
+  from outside written and scheduled.
+- Which gate should have caught it: **none exists, and now some do.** G4 gained a check that
+  the `summary` job exists and waits for every gate; R11 checks live branch protection
+  weekly. The rest could only have been caught by running the nineteen negative tests in
+  `setup.md` step 9, which had never been run — that is now on the backlog with its own
+  scratch repository, because a gate nobody has watched fail is a gate nobody knows works.
 
 <!--
 On close, replace the status line with all three of these:
