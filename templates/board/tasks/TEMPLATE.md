@@ -25,14 +25,23 @@ here, it will not be read.
 
 ## 3. Lane
 
-The globs this task may touch.
+The globs this task may touch. One per line, inside the fence — the gate reads the fence and
+nothing else.
 
-`path/glob/**`
+```
+path/glob/**
+```
 
 <!--
+The fence matters. The gate used to scan this whole section for backticks, so a card that
+spelled out "do not touch `packages/sim/**`" was granting exactly that path.
+
 Any path outside the assignee's normal lane must be listed here AND the pull request must
 carry the `lane-override` label. Both, or the gate rejects it. One of the two alone is
 something an agent can arrange by itself.
+
+This card is read from the base branch, so it grants nothing until it is merged. Dispatch
+first, then work.
 -->
 
 ## 4. Contracts
@@ -58,8 +67,9 @@ A checklist. Every item observable by someone who did not do the work.
 One command, or a short sequence. It exits zero exactly when this task is done.
 
 <!--
-Fixed at dispatch. The evidence gate compares this against the pack, precisely so the
-command cannot be selected afterwards to match whatever happened to pass.
+Fixed at dispatch. The evidence gate compares this against the pack in both directions, so
+the pack runs these commands and no others: the command cannot be selected afterwards to
+match whatever happened to pass, and extra commands cannot pad the output.
 -->
 
 ## 7. Evidence

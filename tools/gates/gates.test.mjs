@@ -11,7 +11,16 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { globToRegex, ownerOf, parseBranch, parseOwnership, section } from './lib.mjs';
+import {
+  SELF_GOVERNING,
+  fencedGlobs,
+  globToRegex,
+  ownerOf,
+  parseBranch,
+  parseDiffZ,
+  parseOwnership,
+  section,
+} from './lib.mjs';
 
 let failed = 0;
 
@@ -73,6 +82,50 @@ check('reads the right section', section(card, '## 3. Lane').includes('docs/**')
 check('stops at the next heading', section(card, '## 3. Lane').includes('none'), false);
 check('missing section is null', section(card, '## 9. Nope'), null);
 
+// ── granted paths come from the fence, not from every backtick ────────────
+// A card that spelled out what the assignee must not touch was granting it,
+// because the gate read prohibitions and permissions with the same regex.
+console.log('fenced grants');
+const lane = [
+  '',
+  'Do not touch `packages/sim/**` under any circumstances.',
+  '',
+  '```',
+  'docs/01-game/**',
+  'board/tasks/T-042.md   # the card itself',
+  '',
+  '```',
+  '',
+  'See also `docs/02-tech/architecture.md`.',
+].join('\n');
+check('reads the fenced block', fencedGlobs(lane), ['docs/01-game/**', 'board/tasks/T-042.md']);
+check('a prohibition outside the fence grants nothing', fencedGlobs(lane).includes('packages/sim/**'), false);
+check('no fence grants nothing', fencedGlobs('`docs/**` is yours'), []);
+check('no section at all grants nothing', fencedGlobs(null), []);
+
+// ── renames are two events, not one ───────────────────────────────────────
+// Without -M, `git mv` out of somebody else's lane looked like a plain addition
+// in yours, and the file it came from was never checked against its owner.
+console.log('diff parsing');
+check('modification', parseDiffZ('M\0docs/a.md\0'), [{ status: 'M', path: 'docs/a.md' }]);
+check(
+  'rename becomes a delete and an add',
+  parseDiffZ('R100\0docs/00-charter/vision.md\0packages/sim/vision.md\0').map((e) => [e.status, e.path]),
+  [
+    ['D', 'docs/00-charter/vision.md'],
+    ['A', 'packages/sim/vision.md'],
+  ]
+);
+check('paths with spaces survive', parseDiffZ('A\0docs/a b.md\0')[0].path, 'docs/a b.md');
+check('empty diff', parseDiffZ(''), []);
+
+// ── files that decide the verdict ─────────────────────────────────────────
+console.log('self-governing paths');
+check('the workflow', SELF_GOVERNING.test('.github/workflows/gates.yml'), true);
+check('a gate', SELF_GOVERNING.test('tools/gates/lane-check.mjs'), true);
+check('the project ownership table', SELF_GOVERNING.test('docs/03-process/ownership.md'), true);
+check('ordinary code is not', SELF_GOVERNING.test('packages/sim/combat.ts'), false);
+
 // ── ownership table parsing ───────────────────────────────────────────────
 console.log('table parsing');
 const table = [
@@ -88,7 +141,7 @@ check('strips bold markers', parseOwnership(table)[0].owner, 'S1');
 // Only meaningful in the studio repo. In a project repo this same file runs
 // from the mirror, where the studio's table does not exist, and asserting on it
 // would fail for a reason that has nothing to do with the project.
-if (existsSync('docs/00-charter/studio-charter.md') && existsSync('OWNERSHIP.md')) {
+if (!existsSync('.studio-version') && existsSync('OWNERSHIP.md')) {
   console.log("this repo's ownership table");
   const own = parseOwnership(readFileSync('OWNERSHIP.md', 'utf8'));
   const owner = (f) => ownerOf(f, own)?.owner ?? '(none)';

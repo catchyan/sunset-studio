@@ -17,12 +17,23 @@ whenever somebody eventually notices, which is always later than this.
 
 ---
 
-## A-<date>-<n> · <one line>
+## A-2026-08-21-1 · The framework cannot be worked with as released
 
-- Pulled by: <code> at <ISO timestamp>
-- Type: red-main | contradiction | frozen-contract | false-assumption
-- Affected: which tasks, which files, who should stop now
-- Evidence: link to the failed run, or both contradicting quotes with their paths
+- Pulled by: Q1 at 2026-08-21T07:40:00Z
+- Type: false-assumption
+- Affected: everything. No task may be dispatched against v2.0.1 in any project.
+- Evidence: three independent audits of v2.0.1, plus one confirmed in production —
+  `catchyan/sunset-club` had `required_status_checks.contexts = ["gates"]`, a workflow name
+  where GitHub expects a job name, so its pull request showed seven green gates and could
+  not merge. Live API response captured in `evidence/T-002/protection.txt`.
+- Also confirmed: `${{ github.head_ref }}` interpolated into `run:` in both workflows, so a
+  legal branch name switches the lane and envelope gates off; the ownership table read from
+  the pull request head; renames invisible to the lane gate; peer review enforced by nothing;
+  the andon cord itself structurally unmergeable.
+- Assumption now known to be false: that v2.0.1 was ready for the first task. It was not.
+  It was ready to look ready.
+- Repair: T-002, merged under `break-glass` because a framework this broken cannot be
+  repaired through the gates it broke.
 - Status: OPEN
 
 <!--

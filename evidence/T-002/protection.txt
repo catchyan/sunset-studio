@@ -1,0 +1,13 @@
+The production failure behind andon A-2026-08-21-1.
+
+$ gh api repos/catchyan/sunset-club/branches/main/protection --jq '.required_status_checks.contexts'
+["gates"]
+
+The workflow is named gates. Its jobs are mirror, lane, envelope, docs, build, feel,
+summary. GitHub matches job names, so the required check never reported and no pull
+request in that repository could merge, while every gate on it showed green.
+
+After the fix:
+
+$ gh api repos/catchyan/sunset-club/branches/main/protection --jq '.required_status_checks.contexts'
+["summary"]
