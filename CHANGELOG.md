@@ -8,6 +8,29 @@ bound.
 
 ---
 
+## v3.0.2 — 2026-08-21
+
+Patch. The docs gate rejected a task card for naming the one path a task card is supposed to
+name before it exists.
+
+★ Cause: `sunset-club` PR #3, 2026-08-21 — the first task card written in a project under
+v3.0.1. Section 8 of the template ends "Three failed attempts: stop and write
+`board/blockers/T-XXX.md`", and the gate checks that backticked in-repo paths exist. Filled in
+with a real task id, that line names a file that must not exist yet: a card whose blocker
+report already exists is a card already in trouble.
+
+- `board/blockers/**` is exempt from the path-existence check.
+- The studio's own path check now covers `board/tasks/`, `board/backlog.md` and
+  `board/andon.md`. It previously covered no `board/` path at all, which is why three studio
+  cards carrying the same line passed and the first project's card failed. A gate that checks
+  a project harder than it checks the framework will keep finding defects one project too
+  late.
+
+The rest of the board — decisions, drift, playtests, the trust ledger — is still unchecked in
+the studio, because those belong to projects and the studio only describes them.
+
+---
+
 ## v3.0.1 — 2026-08-21
 
 Patch. Two things v3.0.0 got wrong on the first real merge it governed, plus two cosmetic
