@@ -8,6 +8,155 @@ bound.
 
 ---
 
+## v3.0.0 — 2026-08-21
+
+Major. Three independent audits read the v2.0.1 framework against its own claims before any
+game code existed. They found the gates could be switched off by a branch name, that peer
+review was unenforced, and that the first project's pull requests could not merge at all.
+Everything below is a defect that was real in v2.0.1.
+
+The version is major because tightening a gate turns an existing project red: cards must now
+be dispatched before the work, granted paths must be inside a fence, and evidence packs must
+run exactly the card's commands. Every project re-mounting will have to fix its open cards.
+
+### Branch protection required a check that does not exist
+
+★ Cause: 2026-08-21. `sunset-club` was configured with `contexts: ["gates"]` — the workflow
+name. GitHub matches **job** names, so the required check never reported. Every pull request
+showed seven green gates and a grey merge button, and the repository was unmergeable for a
+day. `setup.md` warned about this two paragraphs after printing the command that caused it.
+
+- `tools/verify-protection.mjs`: reads live protection from outside the repository, which is
+  the only place it can be read from. Nothing inside a workflow can see its own protection.
+- R11, Monday 09:30, O1.
+- `spec-check.mjs` additionally refuses a workflow with no `summary` job, or one whose
+  `needs` list omits a gate — a gate outside that list cannot block a merge.
+- `setup.md` now uses a JSON body, states the job-versus-workflow distinction first, and
+  ends with the verification command.
+
+### A branch name could switch the gates off
+
+★ Cause: the gate-tools audit, 2026-08-21, which proved the ref name was legal rather than
+assuming it. `${{ github.head_ref }}` was interpolated into `run:`, so a branch named
+``lane/A1/T-001"||true;#`` made the lane and envelope steps exit zero without checking
+anything. The pull request that disabled the gates would have been approved by them.
+
+- Every external value is an `env:` variable in both workflows and the project template.
+- `lib.mjs` calls git through `execFileSync` with an argument array. There is no shell left
+  between a branch name and git.
+
+### The lane gate read permissions from the branch it was judging
+
+★ Cause: same audit. Four independent ways past it, all real:
+
+- The ownership table was read from the pull request head, so its owner could grant
+  themselves a path in the commit that used it. Permissions now come from the base branch;
+  only files that do not exist on base are matched against the branch's table, and adding
+  that row is itself a change the gate has already judged.
+- `ownershipPath()` returned the first candidate that existed, so creating a root
+  `OWNERSHIP.md` in a project hijacked the whole table. The table is now chosen by repository
+  kind: `.studio-version` present means project.
+- `git diff --name-only` reports only where a renamed file landed, so `git mv` out of another
+  role's directory read as a plain addition in yours. Diffs use `-M -z`; a rename is checked
+  as a delete of the source and an add of the destination.
+- Task cards were read from the branch, so the lane declaration was a note the author wrote
+  to themselves. Cards are read from the base branch: dispatch is now load-bearing rather
+  than ceremonial.
+
+### A card that forbade a path was granting it
+
+★ Cause: same audit. Section 3 was scanned for backticks, so "do not touch `packages/sim/**`"
+put that glob in the granted list. Granted paths now come from a fenced block and nowhere
+else, and the envelope gate rejects a card whose section 3 has no fence.
+
+### Peer review was not enforced by anything
+
+★ Cause: 2026-08-21. Every agent drives one GitHub account, so GitHub's own review
+requirement can never be satisfied — an account cannot approve its own pull request — and
+`sunset-club` had it set to one, which was the second reason nothing could merge. The
+envelope gate's owner-versus-reviewer check compared two strings in a file the author edits.
+
+- The reviewer comments `APPROVED-BY: <code>`. The envelope gate collects every review and
+  comment body and requires a code that is neither the branch's bot nor the card's owner.
+- `pull_request_review` is a trigger, so an approval re-runs the gates without a new commit.
+- A diff touching `.github/workflows/`, `tools/gates/`, or an ownership table needs
+  `APPROVED-BY: human`. On a same-repository pull request GitHub runs the workflow from the
+  branch under review, so those diffs are judged by the files they change. The human is the
+  only reviewer outside that loop, and `gates.md` now says so under "What the gates cannot
+  check" rather than implying the repository can police itself.
+
+### Routines, andon pulls and dispatch were all structurally unmergeable
+
+★ Cause: the framework audit, 2026-08-21. The envelope gate required a dispatched card, an
+evidence pack and a green exit code from every pull request. Appending to `board/andon.md`
+has none of those, and its first trigger is a red default branch — so recording that the line
+had stopped required the line to be running. Dispatching the first card required a card that
+had already been dispatched.
+
+- `board/<CODE>/<slug>` branches: `chore(board):` commits, no card, no evidence pack, and
+  nothing outside `board/`.
+- `board/andon.md` and `board/blockers/**` merge with no approval either. A distress signal
+  that waits for a reviewer is not one.
+- `break-glass`: when CI itself is broken the repair cannot pass the gates it broke. The
+  label downgrades the envelope gate's failures to warnings, but only if the same diff writes
+  the andon entry. Pulling the cord and recording it are one act.
+
+### Evidence packs passed on their last line
+
+★ Cause: same audit. The gate tested `/EXIT_CODE=0\s*$/` against the whole file, so a pack
+reporting `EXIT_CODE=1`, `EXIT_CODE=1`, `EXIT_CODE=0` passed — which is exactly the pack you
+would produce if you were hiding the first two. `command.txt` was checked for containing the
+card's commands, so adding four more that pass was free.
+
+- Every `EXIT_CODE` line must be zero, and the set of commands must equal the card's exactly.
+
+### The mirror gate could not see a file the manifest omitted
+
+★ Cause: same audit. Verification walked `MANIFEST.json`, so a manifest missing a gate file
+described a mirror missing that gate and every hash in it still checked out.
+
+- The upstream file set is now compared against the manifest. The list of what should have
+  been mounted is read from `tools/mount.mjs` inside the freshly cloned tag, never from
+  anything the project could have written.
+
+### A project had to hand-write its CI
+
+★ Cause: the framework audit. `mount.mjs` was documented as `node tools/mount.mjs`, a path
+that does not exist in a repository that has not mounted anything yet, and no workflow
+template shipped. The first project wrote its own, and it was the one with the unreachable
+required check and the missing upstream mirror comparison.
+
+- `templates/.github/workflows/gates.yml` ships and is installed on first mount, never
+  overwritten afterwards — projects add their own jobs to it.
+- The bootstrap is a `curl` of `mount.mjs` at the tag being mounted, so the mount logic and
+  the framework it mounts are the same release.
+- The template fails with the list of missing `package.json` scripts rather than with npm's
+  "command not found", because the commit that creates the workspace turns eight blocking
+  steps on at once.
+
+### `skipped` counted as `success`
+
+★ Cause: the gate-tools audit. The summary job treated a job that never ran as a job that
+passed, and a job that never runs is one `if:` away in a diff this gate is judging. Required
+jobs are now listed per event and must be `success`.
+
+### Smaller things
+
+- `lock.mjs`: releasing required no holder, and matched with `startsWith`, so omitting your
+  name was the easiest way to take someone else's lock and `A1` could release `A10`'s. Holder
+  is required and compared exactly. `list` fetches tags first, so it can read the messages it
+  prints.
+- Role cards listed ownership globs. They had already drifted from the table — C1 named a
+  board directory that had been renamed, and O1 and Q1 both claimed `.github/`. The cards
+  describe an area of responsibility; the table decides paths.
+- The constitution claimed a build gate enforced frozen contracts and hardcoded constants.
+  Neither check exists in the studio layer. Both now say so.
+- H2 had no rubric, so "the human plays it for twenty minutes" produced nothing comparable
+  between milestones. Four fixed questions, written to `board/playtests/`, with question four
+  blocking.
+- `spec-check.mjs` reported its own explanatory comment as a swallowed failure. Comment lines
+  are stripped before the scan.
+
 ## v2.0.1 — 2026-08-21
 
 Patch. No rule changed; the mount produced a mirror the mirror gate rejected.

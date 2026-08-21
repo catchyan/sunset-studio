@@ -4,11 +4,15 @@ A routine is a scheduled prompt attached to one bot. Every recurring obligation 
 framework is one of these — if it is not here, it is not scheduled, and "someone will
 remember" is not a schedule.
 
-Ten routines. There used to be more, including a self-reported heartbeat from every agent
+Eleven routines. There used to be more, including a self-reported heartbeat from every agent
 every two hours. That produced sixty writes a day whose entire content was "still here",
 and it could not cover the one case that mattered: an agent that has stopped and therefore
 cannot report stopping. Commit timestamps report the same fact for free and cannot be
 faked by an absent agent.
+
+Every routine that writes to the repository does so on a `board/<CODE>/<slug>` branch. Those
+carry no task card and no evidence pack — an obligation that recurs is nobody's task, and
+requiring one made all of these structurally unmergeable.
 
 ---
 
@@ -24,6 +28,7 @@ faked by an absent agent.
 | R8 | P0 | Monday 09:00 | Sprint planning |
 | R9 | P0 | Friday 16:00 and 17:00 | Demo, then retrospective |
 | R10 | C1 | 03:00 daily, from M4 | Economy simulation |
+| R11 | O1 | Monday 09:30 | Branch protection check |
 
 ---
 
@@ -35,8 +40,11 @@ faked by an absent agent.
 
 **R2 · Dispatch**
 > For each task starting today, write `board/tasks/T-XXX.md` with all eight sections, a
-> named reviewer who is not the assignee, and an acceptance command that exits zero when the
-> task is done. Add it to `board/backlog.md`. Assign it in the room.
+> named reviewer who is not the assignee, the granted paths inside the fence in section 3,
+> and an acceptance command that exits zero when the task is done. Add it to
+> `board/backlog.md`. Open the pull request from `board/P0/<slug>` and **merge it** before
+> assigning: the lane gate reads permissions from the base branch, so an unmerged card
+> grants nothing and the assignee is stopped at their first file.
 
 **R3 · Stall check**
 > Run `node tools/board/stall.mjs`. Say nothing if it reports nothing. For each alerting
@@ -74,6 +82,12 @@ faked by an absent agent.
 **R10 · Economy simulation**
 > Run the simulation over the current data. Compare against the prediction recorded when the
 > last change merged. Report the difference, not the absolute numbers.
+
+**R11 · Branch protection check**
+> Run `node tools/verify-protection.mjs` against every repository in the studio. Nothing
+> inside a repository can check its own protection. The failure this exists to catch — a
+> required check naming the workflow instead of the `summary` job — shows every gate green
+> and leaves the merge button grey, and it cost a day the first time.
 
 ---
 

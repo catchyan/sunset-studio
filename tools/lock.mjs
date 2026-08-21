@@ -30,6 +30,9 @@ function git(args, quiet = false) {
 const tagOf = (resource) => `lock/${resource}`;
 
 function list() {
+  // The tag message holds the holder and the timestamp, and `ls-remote` returns
+  // hashes only, so the tags have to be local before any of this is readable.
+  git(['fetch', '--tags', '--force', 'origin'], true);
   const res = git(['ls-remote', '--tags', 'origin', 'refs/tags/lock/*']);
   const held = res.out
     .split('\n')
@@ -90,8 +93,16 @@ function release(resource, holder) {
     console.log(`${resource} is not locked.`);
     return 0;
   }
-  if (holder && !subject.startsWith(holder)) {
-    console.error(`${resource} is held by ${subject.split(' ')[0]}, not ${holder}. Releasing another holder's lock is how two jobs end up writing the same port.`);
+  // Exact match on the first token. `startsWith` let A1 release A10's lock, and
+  // omitting the holder skipped the check entirely — which made the safest way
+  // to steal a lock "do not mention who you are".
+  const heldBy = subject.split(' ')[0];
+  if (heldBy !== holder) {
+    console.error(
+      `${resource} is held by ${heldBy}, not ${holder}.\n` +
+        "Releasing another holder's lock is how two jobs end up writing the same port.\n" +
+        'If the holder is gone, report it; do not take the lock from them.'
+    );
     return 1;
   }
   const pushed = git(['push', '--delete', 'origin', `refs/tags/${tag}`]);
@@ -117,7 +128,7 @@ switch (cmd) {
     process.exit(acquire(resource, holder, rest.join(' ')));
     break;
   case 'release':
-    if (!resource) {
+    if (!resource || !holder) {
       console.error('Usage: node tools/lock.mjs release <resource> <holder>');
       process.exit(2);
     }

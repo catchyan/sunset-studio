@@ -38,8 +38,9 @@ build two different interfaces, and neither will notice until integration.
 
 A contract marked `FROZEN` changes only through an ADR.
 
-*Enforced by:* the build gate refuses code that touches a frozen contract without a
-matching ADR reference.
+*Enforced by:* nothing yet, in the studio layer. A project may add the check to its build
+gate, and should. Until then this is a review rule, and saying otherwise would leave
+everyone believing a machine was watching a file nothing was watching.
 
 ### 3. Numbers live in data, not in code
 
@@ -47,7 +48,8 @@ Damage values, prices, timings, drop rates: data files, validated against a sche
 number compiled into a source file cannot be tuned by the person who owns tuning, so it
 will be tuned by whoever owns the file, which is the wrong person.
 
-*Enforced by:* the build gate's hardcoded-constant check.
+*Enforced by:* the project's build gate, if the project has written the check. The studio
+layer cannot know what counts as a tuning number in your game, so it does not pretend to.
 
 ---
 
@@ -85,9 +87,17 @@ skimming, and the review gate silently becomes decorative while still reporting 
 ### 7. Nobody certifies their own work
 
 An agent may not approve, merge, or declare done anything it produced. Author and
-reviewer are different agents, named on the task card before the work starts.
+reviewer are different agents, named on the task card before the work starts, and the
+reviewer says so in the pull request timeline: a line reading `APPROVED-BY: <their code>`.
 
-*Enforced by:* the envelope gate compares the two names.
+The same rule applies to the repository itself. A diff that changes the workflow, the gate
+scripts, or an ownership table is judged by the very files it changes, because GitHub runs
+the workflow from the branch under review. Those diffs need the human, who is the only
+reviewer standing outside that loop.
+
+*Enforced by:* the envelope gate compares the two names on the card, and requires an
+approval from someone who is neither. It is auditable rather than authenticated: every
+agent shares one account today, so the line proves that somebody wrote it, not who.
 
 ### 8. Done is a command, not an opinion
 
@@ -102,7 +112,9 @@ whatever happens to pass.
 ### 9. Claims need evidence
 
 "I ran it and it passed" is not evidence. An evidence pack is: the command, its full
-output ending in `EXIT_CODE=0`, the diff summary, and the environment.
+output in which *every* `EXIT_CODE` line is zero, the diff summary, and the environment.
+The commands in the pack are the card's commands exactly — running extra ones and reporting
+the total is answering a question nobody asked.
 
 The gatekeeper re-runs a sample of finished tasks in a clean environment. Fabricated
 evidence is the one offence that ends an agent's participation, because a team that
@@ -143,6 +155,11 @@ Pulling the cord when it turns out to be nothing costs an hour. Not pulling it c
 everything built on top afterwards. **Pulling unnecessarily is never penalised. Failing
 to pull is.**
 
+Recording the pull must never depend on the line running, so `board/andon.md` merges on a
+`board/` branch with no card, no evidence and no approval. The first trigger on that list is
+a red default branch, and a gate that demanded a green evidence pack to record it would be
+asking for the one thing that does not exist at that moment.
+
 ---
 
 ## Part five · Evolution
@@ -163,7 +180,9 @@ Every framework change records the failure that caused it, with a date and a lin
 framework that grows from imagination grows without limit, and each addition is a tax
 paid on every task forever.
 
-*Enforced by:* CI rejects changes to gates or SOPs whose PR does not cite a cause.
+*Enforced by:* CI rejects a framework change whose `CHANGELOG.md` diff cites no cause.
+The changelog, not the pull request description: a description is not a file in a
+repository, so a cause recorded only there is a cause nobody finds in three months.
 
 ---
 
