@@ -1,13 +1,5 @@
-﻿ CHANGELOG.md                    |  53 +++++++++++
- OWNERSHIP.md                    |   1 +
- board/backlog.md                |   3 +-
- board/tasks/T-000.md            |   2 +-
- board/tasks/T-001.md            |  65 ++++++++++++++
- docs/00-charter/constitution.md |   6 +-
- docs/03-gates/gates.md          |  13 ++-
- evidence/T-001/command.txt      |   3 +
- evidence/T-001/env.txt          |   1 +
- evidence/T-001/output.txt       |  20 +++++
- templates/tools/studio-sync.mjs | 188 ++++++++++++++++++++++++++++++++++++++++
- tools/mount.mjs                 |  55 ++++++++----
- 12 files changed, 383 insertions(+), 27 deletions(-)
+﻿ .github/workflows/gates.yml | 16 ++++++++++------
+ CHANGELOG.md                | 13 +++++++++++++
+ board/tasks/T-001.md        |  3 +++
+ docs/03-gates/gates.md      |  9 +++++++--
+ 4 files changed, 33 insertions(+), 8 deletions(-)

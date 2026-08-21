@@ -77,15 +77,19 @@ jobs:
 
       # Constitution article 14. Without this the process grows from imagination,
       # and every addition is charged to every future task.
+      #
+      # The cause is read from the changelog diff, not the pull request body. Article 1:
+      # a pull request body is not in the repository, so a cause recorded only there is
+      # a cause nobody will find in three months. It also kept the body out of a shell
+      # command, which is where it was being interpolated.
       - name: G7 framework changes cite an incident
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE...HEAD")
           if echo "$CHANGED" | grep -qE '^docs/04-grokbot/skills/|^docs/03-gates/|^tools/gates/'; then
-            if ! echo "$PR_BODY" | grep -q '★'; then
-              echo "::error::This PR changes a gate or an SOP but cites no cause."
-              echo "Mark the cause with ★: which real failure prompted this? Date, task id, or incident link."
+            if ! git diff -U0 "$BASE...HEAD" -- CHANGELOG.md | grep -q '^+.*★'; then
+              echo "::error::This PR changes a gate or an SOP and adds no cause to CHANGELOG.md."
+              echo "Add an entry marked ★: which real failure prompted this? Date, task id, or incident link."
               exit 1
             fi
           fi

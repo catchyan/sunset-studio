@@ -130,8 +130,13 @@ caught by measurement or not at all.
 
 ## G7 · Cause for framework change
 
-In the studio repository, a pull request touching gates or SOPs must state the incident that
-prompted it, marked with `★`, including a date and a link.
+In the studio repository, a pull request touching gates or SOPs must add an entry to
+`CHANGELOG.md` stating the incident that prompted it, marked with `★`, with a date and a link.
+
+The changelog rather than the pull request description, for two reasons. Article 1: a
+description is not a file in the repository, so a cause recorded only there is a cause nobody
+finds in three months. And the description was being interpolated into a shell command, which
+made every pull request body executable by whoever wrote it.
 
 Constitution article 14. A framework that grows from imagination grows without bound, and
 every addition is a tax paid on every future task. Requiring a real failure is the only

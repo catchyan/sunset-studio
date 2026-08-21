@@ -53,6 +53,19 @@ and none on another, which reads as tampering.
   not `unset`. Reading `.gitattributes` directly would not have caught it: only git accounts
   for ordering, nested files, and global configuration.
 
+### G7 reads the changelog, not the pull request body
+
+★ Cause: [PR #5](https://github.com/catchyan/sunset-studio/pull/5), 2026-08-21. The cause for
+this very release was written in `CHANGELOG.md`, where the constitution says it belongs, and
+G7 failed anyway because it was reading the pull request description. A gate that rejects the
+correct behaviour teaches people to work around it.
+
+The second reason is worse: the description was interpolated straight into a shell command,
+so any pull request body could run commands on the runner. Nobody had to be malicious for
+that to hurt — a stray backtick in prose would have done it.
+
+- G7 now requires an added `★` line in the changelog diff, and reads no untrusted input.
+
 ### This repository stores LF
 
 ★ Cause: the same investigation. The studio had no `.gitattributes`, so a Windows checkout
