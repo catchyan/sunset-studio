@@ -41,6 +41,8 @@ jobs:
           node-version: '22'
 
       - name: G3 envelope and evidence
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: node tools/gates/envelope-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
 
   docs:
