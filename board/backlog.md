@@ -1,4 +1,4 @@
-# Backlog · studio
+﻿# Backlog · studio
 
 The queue. Owned by P0. Ordered — the top item is the next one taken.
 
@@ -13,11 +13,11 @@ envelopes has already told everyone what its own rules are worth.
 
 | # | Task | Title | Owner | Milestone |
 |---|---|---|---|---|
-| 1 | T-004 | The docs gate rejects the path a task card must name before it exists | Q1 | S0 |
-| 2 | T-003 | Framework v3.0.1: the approval path the first real merge could not use | A1 | S0 |
-| 3 | T-002 | Framework v3: close the audit findings before any task is dispatched | Q1 | S0 |
-| 4 | T-001 | The mount produced a mirror the mirror gate rejects | A1 | S0 |
-| 5 | T-000 | Framework v2: English, derived state, cut unenforced rules | A1 | S0 |
+| 1 | T-005 | Every command the SOPs print fails in a project | O1 | S0 |
+
+A task leaves this table when it merges. Its card stays, and where it stands is derived; a
+finished row here would be a second answer to a question `status.mjs` already answers, and the
+two would disagree within a week.
 
 ---
 
