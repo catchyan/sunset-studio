@@ -1,53 +1,48 @@
-# 阻塞报告 · T-XXX
+# T-XXX blocker
 
-- 报告人: @<代号>
-- 时间: YYYY-MM-DD HH:MM
-- 任务: T-XXX
-- 阻塞时长: <小时>
+- Bot: <code>
+- Blocked since: <ISO timestamp>
+- Escalating to: @<code>
+- Status: OPEN
 
-## 我想做什么
+## What I was trying to do
 
-<一句话。目标，不是手段。>
+One sentence, from section 1 of the card.
 
-## 我试了什么（必须≥3 次，逐条）
+## Attempts
 
-| # | 做法 | 结果 | 报错原文 |
+| # | What I tried | What I expected | What happened |
 |---|---|---|---|
-| 1 | | | ``` ``` |
-| 2 | | | ``` ``` |
-| 3 | | | ``` ``` |
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
 
-## 环境
+<!-- Three rows. There is no fourth attempt. If you are filling in a fourth, stop. -->
 
-```
-node: 
-pnpm: 
-os: 
-branch: 
-last_commit: 
-```
+## What I believe the cause is
 
-## ★ 我的猜测
+And how confident you are.
 
-<必填。哪怕只有 30% 把握也要写。>
-<空着这一段的阻塞报告会被退回。你比任何人都更接近现场。>
+"I do not know" is a permitted answer and is more useful than a confident guess — a guess
+sends the next person down the dead end you just came out of.
 
-## ★ 我需要谁
+## What I need
 
-- [ ] @架构 A1 — 设计问题
-- [ ] @运维 O1 — 环境问题
-- [ ] @<具体 Bot> — 契约/接口对不上
-- [ ] 人类 — 需要外部凭据 / 需要一个我无权做的决定
+A decision, an interface, a permission, or different eyes. Be specific enough that the
+recipient can act without asking a follow-up question.
 
-## 我能不能绕过去先干别的
+## What I have ruled out
 
-- [ ] 能，我先去做 T-YYY
-- [ ] 不能，这是关键路径
+So nobody repeats your three attempts.
+
+This section is the reason this file exists. Without it the helper starts from zero.
 
 ---
 
-> **三振出局：同一个问题失败 3 次必须停手写这份报告。**
-> 第 4 次相似尝试是本项目最浪费的行为，且会被记入信任账本（超时）。
->
-> 写这份报告不丢人。**沉默才丢人。**
-> 报告本身就是一次有价值的产出：它把"某个 Bot 卡住了"变成了"我们知道在哪卡住、为什么卡住、下一步找谁"。
+## Resolution
+
+<!-- Filled in when it unblocks. -->
+
+- Resolved: <ISO timestamp> by @<code>
+- What actually fixed it:
+- Which gate or document should have prevented it: <id, or "none exists">

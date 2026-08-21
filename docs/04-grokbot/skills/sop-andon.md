@@ -1,62 +1,71 @@
-# SOP · 安灯绳（Andon）
+# /sop-andon · Stop the line
 
-**何时使用**：任何 Bot 发现下列情况之一时。**这是义务，不是权利。**
-**输出**：追加一条到 `board/andon.md`，并 @总督 @闸门。
+**Trigger — exactly four situations:**
 
----
+1. The default branch is red.
+2. Two specifications contradict each other and code is being written against one of them.
+3. A `FROZEN` contract was violated.
+4. Work in flight rests on an assumption now known to be false.
 
-## 必须拉绳的四种情况
-
-1. **main 分支 CI 红** —— 主干坏了，所有人的工作基线都不可信了
-2. **两份规格互相矛盾** —— 继续做下去必然有一半是白做
-3. **冻结契约被违反** —— 并行工作的前提没了
-4. **发现前面的工作建立在错误假设上** —— 越晚发现越贵
-
-## 铁律
-
-> **拉错安灯不受任何责备。不拉安灯才受惩罚。**
-
-如果你在犹豫"这算不算需要拉绳"——**拉**。误报的成本是几十分钟，漏报的成本是几天。
+Anything else is a blocker report, not an andon pull. Keeping this list short is what keeps
+the cord meaningful.
 
 ---
 
-## 格式
+## 1. Pull it immediately
 
-追加到 `board/andon.md` 顶部（最新的在最上面）：
+Append to `board/andon.md`. That file is append-shared: add your entry, never touch anyone
+else's.
 
 ```markdown
-## 🔴 ANDON-2026-0820-01 · <一句话>
-- 拉绳人: <代号>
-- 时间: 2026-08-20T15:12+08:00
-- 类型: MAIN_RED | SPEC_CONFLICT | CONTRACT_VIOLATION | WRONG_ASSUMPTION
-- 现象: <客观描述，贴原文/报错/两处矛盾的原文引用>
-- 影响范围: <哪些任务/哪些人受影响>
-- 我建议的第一步: <你觉得该先做什么>
-- 状态: OPEN
+## A-<date>-<n> · <one line>
+
+- Pulled by: <code> at <ISO timestamp>
+- Type: red-main | contradiction | frozen-contract | false-assumption
+- What is affected: which tasks, which files, who should stop
+- Evidence: link to the failed run, or both contradicting quotes with paths
+- Status: OPEN
 ```
+
+Then say it in the room. The file is the record; the message is the interrupt.
+
+## 2. Work stops in the affected area
+
+Not all work everywhere — only what depends on the broken thing. The pull says which tasks
+those are, so people can tell whether it means them.
+
+Nothing merges to a red default branch, regardless of area.
+
+## 3. Whoever it belongs to responds
+
+| Type | Owner | Within |
+|---|---|---|
+| Red default branch | Q1 | 30 minutes |
+| Contradicting specifications | S1 finds both sides, the spec's owner decides | 4 hours |
+| Frozen contract violated | A1 | 4 hours |
+| False assumption | P0 decides what to salvage | 4 hours |
+
+The first response is a decision about direction, not a fix: revert, fix forward, or accept
+and adjust. Say which one, then do it.
+
+## 4. Close it with a cause, not a patch
+
+```markdown
+- Status: CLOSED at <timestamp>
+- What was actually wrong:
+- What was done:
+- Which gate should have caught it: <gate id, or "none exists">
+```
+
+That last line is mandatory. If no gate would have caught it, that is an input to the
+retrospective — and it is the only legitimate source of new rules, since the constitution
+requires a real incident before the process may grow.
 
 ---
 
-## 拉绳后会发生什么
+**Definition of done:** status is CLOSED, the cause is recorded, and the missing-gate line
+is filled in.
 
-1. **全线停止接新任务。** 总督在下一次晨会前不派新活。
-   已经在做的任务：如果与安灯无关可以继续，但不许开 PR 合入。
-2. 总督建一个临时的 **Andon 群聊**（拉绳者 + 相关方 + P0 + Q1），解决后解散。
-3. 优先级排序：
-   - `MAIN_RED` → 最高。**能 30 分钟内修好就修，不能就立刻 revert 引入的 PR**，先让 main 变绿再慢慢查。主干绿色的优先级高于任何单个特性。
-   - `CONTRACT_VIOLATION` → 由 A1 裁决：回退违规改动，还是走 ADR 正式变更契约。
-   - `SPEC_CONFLICT` → 由规格所有者裁决哪一份是对的，S1 消除另一份。
-   - `WRONG_ASSUMPTION` → 由 P0 召集，评估已完成工作的报废范围。
-4. 只有总督能关闭安灯，且必须在相关方确认修复后。
-
-## 关闭时必须补一节
-
-```markdown
-- 状态: CLOSED
-- 关闭时间:
-- 根因:
-- 修复:
-- ★ 哪道闸门本该拦住它？为什么没拦住？应该新增什么检查？
-```
-
-最后一条由 Q1 转成 `board/escapes/<id>.md`，并在本周回顾里变成一条闸门改进提案。
+**Pulling unnecessarily is never penalised.** A false alarm costs an hour. An unpulled cord
+costs everything built on top of the broken assumption between now and whenever someone
+notices — and someone always notices later than this.

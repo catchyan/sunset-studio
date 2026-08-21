@@ -1,226 +1,152 @@
-# 闸门定义（Gates）
+# Gates
 
-> 状态：ACTIVE v1.0 · 所有者：闸门官(Q1) · 放宽闸门只能由人类批准
-> 九道机器/流程闸门 + 两道人类闸门。任何一道不过，产物不得进入下一阶段。
+A gate is a program that returns zero or non-zero. Nothing else is a gate.
+
+Advice in a document is not a gate. A checklist nobody runs is not a gate. If a rule
+matters and no program can check it, say plainly that it is unenforced and depends on a
+person — do not describe it in a way that implies a machine is watching.
+
+**This table is itself checked.** `tools/gates/spec-check.mjs` compares it against
+`.github/workflows/gates.yml` in both directions: a gate documented here must exist as a
+job there, a job there must appear here, and a gate documented as blocking must not
+contain `continue-on-error` or a `||` that swallows its own failure.
+
+That check exists because of a real failure: one gate was documented as blocking and its
+command ended in `|| echo`. It reported green for weeks while checking nothing, and the
+document that would have revealed it was read by different people at different times than
+the workflow file.
 
 ---
 
-## 闸门总览
-
-| # | 闸门 | 触发时机 | 执行者 | 自动化 |
+| ID | Gate | Repos | Enforced by | Blocking |
 |---|---|---|---|---|
-| G1 | 宪法符合性 | 派单前 | P0 | 人工 |
-| G2 | 规格存在性 | 派单前 | P0 | 人工 |
-| G3 | 信封完整性 | 接单时 | 接单 Bot | 人工（有拒绝权） |
-| G4 | 契约符合性 | PR 打开 | CI | ✅ 全自动 |
-| G5 | 车道符合性 | PR 打开 | CI | ✅ 全自动 |
-| G6 | 机器验收 | PR 打开 | CI | ✅ 全自动 |
-| G7 | 手感断言 | PR 打开（战斗/交互类） | CI | ✅ 全自动 |
-| G8 | 同行评审 | CI 全绿后 | 另一个 Bot | 人工（有检查单） |
-| G9 | 收敛检查 | 里程碑结束 | Q1 + S1 | 半自动 |
-| **H1** | **每日决策** | 每日 21:00 | **人类** | — |
-| **H2** | **里程碑品味评审** | 里程碑结束 | **人类** | — |
+| G1 | Framework mirror | project | `mirror` | yes |
+| G2 | Lane | both | `lane` | yes |
+| G3 | Envelope and evidence | both | `envelope` | yes |
+| G4 | Documents and specification | both | `docs` | yes |
+| G5 | Build, types, tests | project | `build` | yes |
+| G6 | Feel and art | project | `feel` | yes |
+| G7 | Cause for framework change | studio | `cause` | yes |
+| R1 | Peer review | both | a different agent | yes |
+| H1 | Daily human decisions | both | the human | no |
+| H2 | Milestone taste review | project | the human | yes |
 
 ---
 
-## G1 · 宪法符合性
+## G1 · Framework mirror
 
-**问题**：这个任务本身违反宪法吗？
+`tools/studio-sync.mjs` verifies `docs/_studio/` against `MANIFEST.json` file by file, then
+re-clones the pinned tag from the studio repository and recomputes the hashes.
 
-检查项（总督在派单前逐条过）：
-- [ ] 不要求任何人修改宪法 / 愿景 / FROZEN 契约
-- [ ] 不要求任何人在别人的车道里改东西
-- [ ] 不要求"先做完再补测试"
-- [ ] 单个任务能在一次工作会话内完成
-- [ ] 不要求实现者自评通过
+Two layers, because one catches only the careless case. Local hashing catches an edited
+mirror file; only re-cloning catches an edited mirror file whose manifest entry was updated
+to match.
 
-不过 → 重写任务或先走 ADR。
+The mirror is committed with `-text` in `.gitattributes`. Without that, Windows line-ending
+translation changes the bytes and the gate reports tampering — accusing a person when the
+cause was a checkout setting.
 
----
+## G2 · Lane
 
-## G2 · 规格存在性
+`tools/gates/lane-check.mjs` reads the ownership table and rejects any changed path the
+branch's bot does not own. Content is not examined; the verdict does not depend on whether
+the change was a good idea.
 
-**问题**：这个任务实现的东西，有一份已冻结的规格在描述它吗？
+Special owners: `HUMAN`, `FRAMEWORK` (mirror; changes only alongside `.studio-version`),
+`ANYONE` (append-shared files), `SELF` (only the file named after you), `TASK-AUTHOR` (a
+`<TASK>` glob, expanded to this branch's task id).
 
-- [ ] 任务链接到 `docs/01-game/` 或 `docs/02-tech/` 里一条**具体**的规格条目（含章节号）
-- [ ] 该规格不是形容词状态（"手感要好"不是规格，帧数据表才是）
-- [ ] 涉及跨模块的，对应契约是 `FROZEN` 而非 `DRAFT`
+Two exceptions, each needing two independent acts: the path listed in section 3 of the task
+card, plus a label. `lane-override` for another role's paths, `human-change` for `HUMAN`
+paths. One act alone does nothing, because one act is something an agent can do to itself.
 
-不过 → 先派"把规格写清楚"的任务，不要派实现任务。
+`HUMAN` paths need a route at all because the constitution has to be amendable, and every
+change here goes through a pull request. Without one, amending it would require an
+administrator force-push — and a rule whose own amendment procedure requires breaking the
+rules does not survive contact with a deadline.
 
-> 这一道闸门是防 F2（规格空隙自由发挥）的第一道防线。跳过它，后面所有闸门都在给错误的东西盖章。
+This is auditable, not preventive. Every agent currently drives the same account, so nothing
+proves who applied a label. What the mechanism buys is that both acts are timestamped in the
+pull request timeline and the gatekeeper reviews **every** labelled pull request rather than
+sampling it.
 
----
+## G3 · Envelope and evidence
 
-## G3 · 信封完整性
+`tools/gates/envelope-check.mjs`:
 
-由接单 Bot 执行，见 `/sop-task-envelope`。**接单者有拒绝权，且拒绝不是过错。**
+- the branch is `lane/<CODE>/T-XXX`;
+- that card exists, has all eight sections, and appears on `board/backlog.md`;
+- owner and reviewer are named, and are different;
+- every commit subject matches `<type>(<scope>): <subject> [T-XXX]` with the branch's id;
+- the evidence pack exists, its output ends in `EXIT_CODE=0`, and its `command.txt`
+  contains the acceptance command from section 6 of the card;
+- code changes stay under 400 lines and 25 files.
 
----
+The command comparison is the point of the whole gate. Without it an agent can run whatever
+passes and paste that instead, and every other check here would still be green.
 
-## G4 · 契约符合性（CI 全自动）
+Deletions are judged against the ownership table as it stood on the base branch. Removing a
+file and its ownership row in one commit is the normal shape of a refactor, and reading only
+the new table calls that "unowned" — a false positive that fires on every cleanup.
 
-```bash
-pnpm typecheck                      # TS strict，零 error
-pnpm schema:validate                # 所有 content 数据过 JSON Schema
-pnpm gates:contract-freeze          # FROZEN 契约文件的改动检查
-pnpm gates:dep-direction            # 依赖方向检查（见 architecture.md §2.1）
-pnpm gates:sim-purity               # packages/sim 的 import 白名单检查
-pnpm gates:no-hardcoded-strings     # 代码里不许有中文字符串（走 i18n）
-```
+Some changes genuinely cannot be split: a bootstrap, a mechanical rename, a vendored import.
+Removing the size limit for those would remove it for everything, so the exception raises the
+price instead — `- Size exception: <reason>` on the card, the `large-change` label on the pull
+request, and a full review rather than a sampled one.
 
-**`gates:contract-freeze` 的逻辑**：
-1. 找出 diff 中所有位于 `docs/02-tech/contracts/` 或 `packages/protocol/` 的文件
-2. 检查这些文件头部是否有 `Status: FROZEN`
-3. 若有，检查 PR 描述里是否引用了一条 `ACCEPTED` 状态的 ADR
-4. 没有 → 失败
+## G4 · Documents and specification
 
-**`gates:sim-purity` 的逻辑**：
-扫描 `packages/sim/**` 的所有 import，白名单只有 `@sunset/shared`、`@sunset/content`、`@sunset/protocol` 和几个纯计算的 npm 包。出现 `three`、`react`、`fs`、`ws`、`window`、`document` → 失败。
+`tools/gates/selfcheck.mjs`: dead links, references to skills or paths that do not exist,
+unmeasurable wording in specification files, and — in the studio repo — iron law one, that
+the framework layer carries no single game's proper nouns.
 
----
+`tools/gates/spec-check.mjs`: this table against the workflow, as described above.
 
-## G5 · 车道符合性（CI 全自动）
+`tools/gates/gates.test.mjs`: the gate engine's own tests. Gates decide what merges, so they
+need tests more than product code does.
 
-```bash
-pnpm gates:lane        # diff 范围 vs docs/03-gates/ownership-schema.md
-pnpm gates:diff-size   # diff ≤400 行（排除 lock 文件与二进制资产）
-pnpm gates:task-id     # 每条 commit message 含 [T-XXX]，且该 ID 存在于 board/sprint.md
-```
+## G5 · Build, types, tests
 
-**`gates:lane` 的逻辑**：
-1. 从分支名 `lane/<代号>/T-XXX` 解析出提交者代号
-2. 读 `ownership.md`，得到该代号允许的 glob 列表
-3. `git diff --name-only origin/main...HEAD`，检查每个文件是否匹配
-4. 有不匹配的 → 失败，**不看内容直接拒绝**
-5. 例外：PR 描述里含 `LANE-OVERRIDE: <被授权路径> (approved by @XX in <链接>)` 且被授权者是该路径的 owner → 放行并记录
+Type checking, linting, unit tests, dependency direction, and replay determinism. Steps are
+skipped by an `if` condition while a package does not yet exist — never by a command that
+cannot fail. A gate is either running or absent; "present but harmless" is the state that
+misleads everyone.
 
-> 这一道必须无情。放松一次，车道制就形同虚设。
+## G6 · Feel and art
 
----
+Frame-data tests, latency measurement, and the art linter. Blocking on any change that
+touches combat, rendering, or assets.
 
-## G6 · 机器验收（CI 全自动）
+Feel is the thing this kind of project gets wrong slowly and irreversibly. A latency
+regression of ten milliseconds is invisible in review and obvious in play, so it has to be
+caught by measurement or not at all.
 
-```bash
-pnpm lint
-pnpm test                                   # 全量单测
-pnpm test:coverage -- --min 80              # sim 战斗核心路径覆盖率
-pnpm test:replay                            # 确定性回放：2000 tick 世界哈希一致
-bash board/tasks/T-XXX.verify.sh            # ★ 任务信封第 6 段的验收命令
-pnpm gates:evidence -- T-XXX                # 证据包完整性检查
-```
+## G7 · Cause for framework change
 
-**`gates:evidence` 检查**：
-- `evidence/T-XXX/` 存在
-- 含 `command.txt` / `output.txt` / `diff-stat.txt` / `env.txt`
-- `output.txt` 最后一行是 `EXIT_CODE=0`
-- `command.txt` 与任务信封第 6 段逐字一致（防止改小验收范围）
+In the studio repository, a pull request touching gates or SOPs must state the incident that
+prompted it, marked with `★`, including a date and a link.
 
-**经济类任务额外**：`pnpm -C packages/econ-sim run gate`（见 `gdd-economy.md` §9.2 的 8 项判据）
+Constitution article 14. A framework that grows from imagination grows without bound, and
+every addition is a tax paid on every future task. Requiring a real failure is the only
+brake that has ever worked.
 
----
+## R1 · Peer review
 
-## G7 · 手感断言（CI 全自动，战斗/交互类必跑）
+A different agent, after CI is green. The reviewer checks intent against the card, not
+syntax — the machines already did syntax.
 
-```bash
-pnpm test:frames        # 帧数据快照，与 packages/content/combat/frames/*.json 逐帧比对
-pnpm test:latency       # 输入 → 画面首帧响应 ≤2 帧
-pnpm juice-lint         # 触感六件套齐全，引用的资源存在
-pnpm bench:combat       # p99 帧时间 ≤18.2ms
-pnpm art-lint           # 调色板 / texel density / 面数预算 / 命名规范
-```
+Approving without reading is the failure this gate is exposed to, which is why G3 caps diff
+size: past a few hundred lines, review becomes skimming regardless of who is doing it.
 
-**帧数据快照的更新规则**：
-快照变了 → CI 红。要更新，必须：
-1. 同时修改 `docs/01-game/feel-spec.md` 的对应表格
-2. 在 PR 描述里写明**为什么**改这个数字（不是"调整手感"，要写"因为 X 所以从 5 帧改到 4 帧"）
-3. 由 D1 设计总监批准
+## H1 · Daily human decisions
 
-**这条规则的意义**：手感不会被"顺手调一下"悄悄改坏。每次改动都留痕、有理由、有人负责。
+At most three per day, from P0. Not a merge gate; a check on whether the team is pointed at
+the right thing.
 
----
+## H2 · Milestone taste review
 
-## G8 · 同行评审
+The human plays the milestone, unassisted, for at least twenty minutes, on the target
+hardware, and answers three written questions.
 
-见 `/sop-code-review`。检查单全部勾完才能 Approve。评审人不能是实现者。
-
----
-
-## G9 · 收敛检查（里程碑结束）
-
-借鉴 Spec Kit 的 `converge`。由 Q1 + S1 联合执行：
-
-- [ ] **规格覆盖**：里程碑范围内的每一条规格，都有对应的实现和测试
-- [ ] **反向覆盖**：代码里没有规格中不存在的功能（悄悄加的东西）
-- [ ] **漂移清零**：`board/drift.md` 为空
-- [ ] **阻塞清零**：`board/blockers/` 里没有 OPEN 状态的
-- [ ] **安灯清零**：`board/andon.md` 里没有 OPEN 状态的
-- [ ] **技术债登记**：本里程碑妥协的地方，全部登记进下一里程碑的 backlog（不许"以后再说"）
-- [ ] **文档更新**：`architecture.md`、`README.md` 反映当前真实状态
-- [ ] **信任账本小结**：本里程碑的谎报/越界统计，以及对应的闸门改进是否落地
-
-产出：`board/milestones/<M>.md` 收敛报告。
-
----
-
-## H1 · 每日决策（人类）
-
-见 `/sop-daily-brief`。人类每天最多回应 3 条决策。
-
-**这道闸门的设计意图是保护人类的注意力。** 人类精力是本项目最稀缺的资源。
-
----
-
-## H2 · 里程碑品味评审（人类）★
-
-> 自动化闸门能保证"不难看、不难用、不出错"。**它保证不了"好"。**
-> 这道闸门是"好"的唯一守门人。
-
-### 流程
-1. 总督准备：可玩构建（部署到 staging）+ 录屏 + 收敛报告
-2. 人类**亲自玩**，至少 20 分钟
-3. 按下面的 rubric 打分，写进 `board/milestones/<M>.md`
-4. 不满足阈值 → 里程碑不放行，无论任务完成率是多少
-
-### Rubric（8 维度 × 5 分制）
-
-| # | 维度 | 1 分 | 3 分 | 5 分 |
-|---|---|---|---|---|
-| 1 | **打击感** | 像在打空气 | 有反馈但不上瘾 | 光是砍杂兵就想一直砍 |
-| 2 | **操作响应** | 明显延迟/丢输入 | 基本跟手 | 想什么身体就做什么 |
-| 3 | **可读性** | 看不懂发生了什么 | 需要适应期 | 一眼看懂敌人要干什么 |
-| 4 | **视觉辨识度** | 像素材拼的 | 统一但平庸 | 截图能一眼认出是这个游戏 |
-| 5 | **配合感**（M3 起） | 各打各的 | 偶尔有配合 | 打完想说"刚才那下牛逼" |
-| 6 | **情绪** | 无感 | 有一点触动 | 有一个瞬间让我停下来 |
-| 7 | **深度感知** | 一眼看到底 | 有东西可研究 | 想去论坛看别人怎么玩的 |
-| 8 | **完成度** | 到处是毛边 | 能玩 | 感觉是个真东西 |
-
-### 放行阈值
-
-| 里程碑 | 总均分 | 硬性单项要求 |
-|---|---|---|
-| M1 | ≥4.0 | 打击感 ≥4，操作响应 ≥4 |
-| M2 | ≥4.0 | 视觉辨识度 ≥4，可读性 ≥4 |
-| M3 | ≥4.0 | 配合感 ≥4 |
-| M4 | ≥4.0 | 情绪 ≥4 |
-| M5 | ≥4.0 | 深度感知 ≥4 |
-| M6 | **≥4.3** | **全部 8 项 ≥4.0** |
-
-### 评审纪律（给人类）
-
-1. **先玩再打分。** 不要看着代码或文档打分。
-2. **每个低于 4 分的项，写一句"具体是哪个瞬间让我这么觉得"。** 这句话比分数有用十倍。
-3. **不要为了推进项目而放水。** 放水一次，后面全部建立在虚假的地基上。
-4. **可以只放行部分范围。** 例如 M1 的打击感过了但可读性没过 → 可以进 M2，但把可读性挂进 M2 的 backlog 并标为阻塞项。
-
----
-
-## 闸门的自我演进
-
-每当发现一个缺陷**逃过了所有闸门**：
-1. Q1 写 `board/escapes/<id>.md`，回答"哪道闸门本该拦住它？为什么没拦住？"
-2. 在本周回顾里变成一条闸门改进提案
-3. A1 实现，Q1 验收
-4. 更新本文档
-
-**这就是"可递归优化"在质量维度的具体落地：系统会从每一次漏网中学会一道新的检查。**
+No metric substitutes for this and none ever will. A milestone that no person has played is
+not finished, however green the board is.

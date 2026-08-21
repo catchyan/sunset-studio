@@ -1,99 +1,146 @@
-# 框架变更记录
+# Changelog
 
-每一条变更都必须带 **★ 起因**：是哪一次真实的失败促成的？
-写不出起因的条目，按章程铁律二不该存在。
+Append-shared. Add your own entry; never rewrite anyone else's. P0 organises at release.
 
-> 唯一例外是 v1.0.0——它是 S0 的初始框架，不可能来自事故，因为还没发生过任何事。
-> 但 S0 一结束，其中每一条规矩都要在第一次回顾时复查：**它拦住过什么？拦不住就删。**
+**Every entry states a cause**, marked `★`: the real failure that prompted it, with a date
+or a link. Constitution article 14. A framework that grows from imagination grows without
+bound.
+
+---
+
+## v2.0.0 — 2026-08-21
+
+Breaking. Rewritten in English, cut down, and re-founded on state derived from git rather
+than state written by hand. Projects upgrading from v1 must re-mount and rewrite their
+ownership table; the owner tokens changed.
+
+### The framework is in English now
+
+★ Cause: three failures in one week traceable to non-ASCII text in machine-read positions.
+A branch protection rule silently required a status check whose name was non-ASCII and
+never matched; a commit message acquired a byte-order mark that broke the subject-line
+check; line-ending translation made the mirror gate accuse a person of tampering when the
+cause was a checkout setting. Owner tokens, gate output, task card headings, commit format,
+and CI job names are all ASCII.
+
+### State is derived, not written
+
+★ Cause: the audit before staffing found that task status lived in three files, that the
+SOPs required the assignee and the reviewer to update files they did not own, and that
+nobody at all was assigned to update the sprint board — which the sampling and stall
+routines both read. Every one of those would have failed on the first real task.
+
+- Removed the status field from task cards; removed the sprint file entirely.
+- Added `tools/board/status.mjs`, which reads git and CI.
+- Added `tools/board/stall.mjs`, which reports only lanes that have stopped.
+- Deleted self-reported heartbeats. Sixty writes a day of "still here" that structurally
+  could not catch the one case that mattered.
+
+### Evidence packs were impossible to submit
+
+★ Cause: the ownership table read `` `evidence/T-XXX/**` `` with `T-XXX` as a literal
+string, so it matched nothing, and the owner was written as prose the gate did not
+understand. Caught by CI on 2026-08-21 on the first pull request that produced an evidence
+pack. Added the `<TASK>` token and the `TASK-AUTHOR` owner, both expanded against the
+branch's task id.
+
+### The lane override could authorise itself
+
+★ Cause: the same audit. The gate matched `LANE-OVERRIDE:` followed by any token in the
+pull request body, accepted a glob, and never checked the approval link — an agent could
+grant itself blanket permission by typing one line. Overrides now require a
+`lane-override` label plus the path being listed in section 3 of the task card, and every
+labelled pull request is fully reviewed rather than sampled.
+
+### Documented gates that did not exist
+
+★ Cause: the audit compared `gates.md` against the workflow. Three documented checks had
+never been written, commit-message task ids were never verified despite being documented as
+enforced, and one gate documented as blocking ended its command in `|| echo` — green for
+weeks while checking nothing. Added `tools/gates/spec-check.mjs`, which compares the gate
+list against the workflow in both directions and rejects a blocking gate that swallows its
+own failures. Implemented the commit-id check and the comparison of `command.txt` against
+the card's acceptance command.
+
+### Locks were impossible to take legally
+
+★ Cause: the lock SOP told agents to push a file directly to the default branch, while
+setup requires branch protection with `enforce_admins`. Every push would have been refused,
+leaving no legal way to lock a shared resource. Locks are now git tags, where the push
+either wins or fails atomically.
+
+### Roles and bot descriptions were two documents
+
+★ Cause: the audit found they had already diverged — one told every bot that the ownership
+table lived at a path that holds only the format specification. Merged into one file per
+role under `docs/02-roles/`, which is itself the description.
+
+### Cut
+
+★ Cause: fourteen roles, seventeen SOPs, eleven routines, and roughly twelve thousand words
+of process, none of which had ever been executed, for agents that will not read it all.
+Rules the gates do not enforce are wishes, and wishes charged to every task.
+
+- SOPs: 17 to 6. The rest folded into the role card of whoever performs them, or deleted.
+- Routines: 11 to 10, with two of them silent unless they find something.
+- Constitution: 20 articles to 12.
+- Board: 20 paths to 11.
+
+### Three defects the new gates found in their own rewrite
+
+★ Cause: running the gates against the rewrite itself, before pushing it.
+
+- A glob ending in `/**` also matched the bare directory path. Harmless in a diff, which
+  only ever names files, but a glob matching more than it says is one people misread.
+- Deleting a file and its ownership row in the same commit was reported as "unowned" — a
+  false positive that would have fired on every refactor anyone ever did. Deletions are now
+  judged against the table as it stood on the base branch.
+- `HUMAN`-owned paths had no legal amendment route at all, so the constitution could only be
+  changed by an administrator force-push. Added the `human-change` label, with the same
+  two-act structure as `lane-override` and a separate name so the two can be counted apart.
+
+Also added a declared exception for changes that genuinely cannot be split, since a hard cap
+with no route made the first infrastructure change impossible — the same shape of defect as
+the three above.
+
+### Also
+
+- Skill installation path corrected to the mirror. As written, no skill would have installed.
+- `docs/00-charter/vision.md` clarified as project-layer; the studio never holds one.
+- Gate scripts share `tools/gates/lib.mjs`, so glob matching cannot be right in one gate and
+  wrong in another.
+- `git` invocations raised to a 64 MB buffer; a large diff previously crashed with an
+  unreadable stack instead of a verdict.
 
 ---
 
 ## v1.0.3 — 2026-08-21
 
-### 变更（行为变化，但不会让任何项目原本能过的 CI 变红）
+Added the mirror owner, so upgrading the framework no longer requires bypassing the lane
+gate.
 
-- 新增特殊 owner **`框架`**：框架镜像只能作为"升级 `.studio-version`"的一部分整体地变
-  ★ 起因：《夕阳红俱乐部》的分离 PR 被自己的闸门拦死。镜像原本标成 `人类`，
-    于是**连唯一一条合法的修改路径（升级版本）也被堵死了**，升级只能靠 admin 强推。
-    一条必须被绕过才能工作的规则，等于教所有人规则是可以绕的
-- `ownership-schema.md` 重写为真正的**格式与规则**文档
-  （原文件是从项目仓库整份搬过来的，里面还留着《夕阳红俱乐部》的具体表）
-  ★ 起因：拆分时的遗留，实际使用中才发现它根本没被"去项目化"
-
-### 新增测试
-
-- 镜像 owner 的解析用例。这条规则写错的两种后果都很严重：
-  要么升不了级，要么谁都能偷改制度
-
----
+★ Cause: the mirror was owned by the human, which blocked the one legal way to change it.
+The only route left was an administrator force-push. A rule that must be bypassed to get
+anything done teaches that rules are optional.
 
 ## v1.0.2 — 2026-08-21
 
-### 修复
+Mount and verify with forced LF line endings; write the `-text` rule into `.gitattributes`.
 
-- `mount.mjs` 克隆时强制 LF，并自动往项目的 `.gitattributes` 写入 `docs/_studio/** -text`
-  ★ 起因：在 Windows 上挂载后，git 把镜像转成 CRLF 存进工作区、提交时又转回 LF。
-    清单里的哈希是按 CRLF 算的，而 CI 在 Linux 上校验的是 LF——**G0 闸门必红，
-    而报错信息会说"镜像被修改"，指向一个根本不存在的篡改。**
-    实测确认：同一个文件工作区 CRLF、暂存区 LF，两者字节不同。
-    这类跨平台问题最坏的地方在于它谎报罪名：真凶是行尾转换，看起来却像有人动了制度
-
----
+★ Cause: the mirror gate went red in a project's CI. Windows had translated line endings on
+checkout, so the bytes verified on Linux differed from the bytes hashed on Windows. The
+failure accused someone of tampering with the framework.
 
 ## v1.0.1 — 2026-08-21
 
-### 修复
+The lane gate's self-test skips studio-table assertions when running in a project repo. The
+changelog became append-shared.
 
-- 车道闸门自测在**项目仓库**里运行时会失败，因为它去找工作室自己的 `OWNERSHIP.md`。
-  现在检测所在仓库：在项目里只测 glob 引擎，工作室表的断言只在工作室仓库跑
-  ★ 起因：《夕阳红俱乐部》挂载 v1.0.0 后，CI 第一次跑就红了。
-    这是拆分双仓时漏掉的场景——同一份测试文件在两种仓库里跑，
-    但它假设了只有工作室那一种
-
-- `CHANGELOG.md` 的 owner 从 P0 改为「任何人」（追加式共享，同 `board/andon.md`）
-  ★ 起因：上一条修复的 PR 被 G5 拦下——Q1 改了归 P0 的 CHANGELOG。
-    闸门判得对，但表划错了：每个改 SOP/闸门的 PR 都必须写变更记录（铁律二），
-    如果这个文件专属一人，每次修复都要越界授权。**烦的规矩会被绕过**，
-    真实结果不会是"大家老实申请授权"，而是"大家渐渐不写 CHANGELOG 了"
-
----
+★ Cause: the mirrored test failed in a project repository looking for a file that only
+exists in the studio. And a gate fix was blocked because the changelog belonged to one role,
+which would have made every future fix require an override.
 
 ## v1.0.0 — 2026-08-21
 
-工作室层从项目仓库中分离出来。
-
-### 新增 · 工作室层
-
-- `docs/00-charter/studio-charter.md`：确立"两个产品"的定位与三条铁律
-  ★ 起因：人类总制作人指出，团队本身应当是一个独立管控的产品，
-    否则做完一款游戏，能力只留在这一款游戏的仓库里
-- `docs/05-studio/studio-roadmap.md`：S0–S3 成熟度阶段与放行条件
-- `docs/05-studio/metrics.md`：六项核心指标 + 两项跨项目指标
-- `docs/05-studio/capability-ledger.md`：能力四级账本，含反面清单
-- `docs/05-studio/versioning.md`：框架版本语义与发布流程
-- `playbooks/new-project.md`：新游戏启动手册
-- `/sop-elevate`：二次法则，约束可复用件上升
-  ★ 起因：预判性的——工作室仓库最容易的死法是过早堆积推测性抽象。
-    本条按铁律二属于"S0 凭想象立的规矩"，第一次回顾时必须复查
-
-### 变更
-
-- 全部制度文档去项目化：项目专名替换为通用表述，
-  题材/经济/调性等项目特有段落改为 `{{占位}}` 并下沉到项目的 `staffing.md`
-- 车道闸门支持双仓：所有权表位置自动探测（`OWNERSHIP.md` 或 `docs/03-process/ownership.md`）
-- 车道闸门自测重写为 **glob 引擎单测 + 本仓库表断言**；
-  各项目的归属断言由项目自己写
-- 工作室文档中引用工作室自身文件时统一加 `@studio/` 前缀，
-  避免在项目仓库通过镜像阅读时与项目同名路径混淆
-
-### 新增闸门
-
-- 自检加入**章程铁律一**检查：扫描项目专名，防止游戏内容混入制度层
-  ★ 起因：拆分过程中实际发现 20 个文件、80 余处项目内容混在制度文档里。
-    如果没有这道机检，第二款游戏启动时会继承一堆《夕阳红俱乐部》的假设
-  ★ 已做负向验收：故意写入项目专名，闸门正确拦截并给出可执行的修复建议
-
-### 已知的、故意留下的
-
-- 多数流程能力在能力账本里仍标 🟡（做过一次），因为它们**只是被写下来了，
-  还没被真实事件检验过**。升 🟢 需要证据：这条 SOP 真的拦住过一次真实的失败
+First release. Constitution, RELAY framework, roles, gates, SOPs, mirroring, and the studio
+layer.

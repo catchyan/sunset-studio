@@ -1,91 +1,72 @@
-# 能力账本（Capability Ledger）
+# Capability ledger
 
-> Owner: A1 总架构师（技术能力）+ P0 总督（流程能力）· 每里程碑更新
-> **这张表是工作室的资产负债表。** 它回答一个问题：**我们现在会做什么了？**
+What this studio actually knows how to do — as opposed to what it has read about.
 
----
+Four levels. Moving up a level requires evidence, not confidence.
 
-## 0. 为什么需要它
-
-做完一款游戏，团队"学到了很多"——这句话如果不能变成一份清单，就等于什么都没学到。
-
-半年后启动下一款时，没有人记得上次是怎么解决 3D 像素抖动的、
-没有人记得为什么当初选了那个网络方案、更没有人知道有一段现成的代码可以直接拿来用。
-
-**能力账本的唯一目的：让"我们会做 X 了"这件事，对下一个项目可见、可取用。**
-
----
-
-## 1. 能力的四个等级
-
-| 等级 | 含义 | 判据 |
+| Level | Meaning | Requirement to reach it |
 |---|---|---|
-| 🔴 **未知** | 没做过，不知道难度 | — |
-| 🟡 **做过一次** | 在某个项目里解决了，但只有那一份实现 | 有 ADR 或文档记录 |
-| 🟢 **已掌握** | 理解了原理，能重做，有可复用件或明确的操作手册 | **有人不看原实现就能重做一遍** |
-| ⭐ **已产品化** | 上升到 `@studio/*`，第二个项目直接用上了 | 至少 2 个项目在用 |
+| Unknown | Never attempted | — |
+| Done once | Worked in one project | Shipped, and the approach is written down |
+| Mastered | Repeatable, predictable | Two projects, and estimates were roughly right |
+| Productised | Available as `@studio/*` | Rule of two, plus versioning and an owner |
 
-> 🟡 → 🟢 的判据是本表最关键的地方：**"能不能不看原实现就重做"**。
-> 做过一次但只能靠复制粘贴，那是资产在项目里，不在工作室里。
-
-⚠️ 🟢 → ⭐ 受**二次法则**约束：**没有第二个项目真的需要它，不许上升。** 见 `/sop-elevate`。
+Being honest at level one is the entire value of this file. A ledger that flatters the team
+gives the same answer as no ledger, and it does it with more confidence.
 
 ---
 
-## 2. 技术能力
+## Process capabilities
 
-| 能力 | 等级 | 出处 | 可复用件 | 备注 |
-|---|---|---|---|---|
-| 多 Agent 车道隔离与冲突防止 | 🟢 | S0 | `@studio/tools/gates/lane-check.mjs` | 含 27 条归属断言 |
-| 任务信封 / 证据包的机器校验 | 🟢 | S0 | `@studio/tools/gates/envelope-check.mjs` | |
-| 文档一致性机检（死链/术语/失效引用） | 🟢 | S0 | `@studio/tools/gates/selfcheck.mjs` | |
-| 3D 像素渲染管线 | 🔴 | — | — | 《夕阳红》M2 攻关 |
-| 确定性 ECS 与回放测试 | 🔴 | — | — | 《夕阳红》M1 攻关 |
-| 权威服务器 + 预测和解 | 🔴 | — | — | 《夕阳红》M3 攻关 |
-| 帧数据驱动的战斗手感 | 🔴 | — | — | 《夕阳红》M1 攻关 |
-| 程序化 / AI 美术管线与风格一致性 | 🔴 | — | — | 《夕阳红》M2 攻关 |
-| 经济模拟与稳定性判据 | 🔴 | — | — | 《夕阳红》M5 攻关 |
-| Electron + Steam 封装 | 🔴 | — | — | 《夕阳红》M6，建议 M2 提前 spike |
+| Capability | Level | Evidence |
+|---|---|---|
+| Lane isolation for multiple agents | Done once | Gate implemented, watched failing |
+| Task envelope and evidence packs | Done once | Gate implemented, watched failing |
+| Framework mirroring and pinning | Done once | Two-layer verification, cross-platform bug found and fixed |
+| Gate specification matching reality | Done once | Spec-check written after a gate was found decorative |
+| Deriving state from git rather than files | Unknown | Designed, never run with real agents |
+| Locking shared resources | Unknown | Tag-based design, untested under contention |
+| Onboarding an agent in under two hours | Unknown | Never measured |
 
-## 3. 流程能力
+## Technical capabilities
 
-| 能力 | 等级 | 出处 | 可复用件 |
-|---|---|---|---|
-| 弱 Agent 的失败模式清单与对策 | 🟢 | S0 | `@studio/docs/01-framework/framework.md` |
-| 八段任务信封 | 🟢 | S0 | `/sop-task-envelope` |
-| 红队抽检（对抗自证） | 🟡 | S0 | `/sop-redteam` · **待第一次真的抓到人才算 🟢** |
-| 安灯与三振出局 | 🟡 | S0 | `/sop-andon` `/sop-blocker` |
-| 契约先行与冻结流程 | 🟡 | S0 | `docs/02-tech/contracts/README.md`（项目层） |
-| 主观品味的结构化评审 | 🟡 | S0 | `/sop-feel-audit` |
-| 经济变更的双人独立复核 | 🟡 | S0 | `/sop-econ-change` |
+| Capability | Level | Evidence |
+|---|---|---|
+| Browser-based 3D rendering pipeline | Unknown | |
+| Deterministic simulation with replay tests | Unknown | |
+| Authoritative multiplayer server | Unknown | |
+| Data-driven content pipeline with schema validation | Unknown | |
+| Procedural and generated art pipeline | Unknown | |
+| Economy simulation before shipping changes | Unknown | |
+| Desktop packaging and store release | Unknown | |
 
-> 注意上面多数流程能力停在 🟡。**它们只是被写下来了，还没被真实事件检验过。**
-> 把它们标成 🟢 需要证据：这条 SOP 真的拦住过一次真实的失败。
-> 在那之前，它们只是我们的假设。
+Everything technical is unknown. Nothing has been built yet, and writing anything else here
+would be the first fabricated claim in a system whose central rule is that claims need
+evidence.
 
 ---
 
-## 4. 每个里程碑结束时要做的
+## Negative list · tried, did not work
 
-对本次里程碑攻克的每一项，回答：
+Kept because a studio that only records successes repeats its failures on schedule.
 
-1. 现在是几级？
-2. 🟡 想升 🟢，缺什么？（通常缺的是**文档**，不是代码）
-3. 有没有哪一项可以上升到工作室层？**先检查二次法则：第二个项目真的要用它吗？**
-4. 有没有哪一项被**降级**了？（原本以为掌握了，实际再做一次还是踩坑 → 诚实地降回 🟡）
-
-第 4 条容易被跳过，但它是这张表可信的前提。**一张只涨不跌的能力表是营销材料，不是资产负债表。**
+| What | Why it failed | Date |
+|---|---|---|
+| Self-reported heartbeats every two hours | Sixty writes a day of "still here", and structurally unable to catch the one case that matters: an agent too stuck to report being stuck | 2026-08 |
+| Task state duplicated across three files | Nobody owned the synchronisation, so all three were stale and every report inherited the error | 2026-08 |
+| Single-owner changelog | Every fix needed an override or a second pull request; tedious rules do not get followed, they get abandoned | 2026-08 |
+| Free-text `LANE-OVERRIDE` in a pull request body | An agent could authorise itself by typing a line, and the approval link was never checked | 2026-08 |
+| Locking by pushing a file to the protected default branch | Branch protection refuses it, so there was no legal way to take a lock at all | 2026-08 |
 
 ---
 
-## 5. 反面清单：我们试过但不работа的
+## Rules
 
-同样重要——**记录失败能防止重复踩坑**，而这类知识几乎从不被记录。
+**Only evidence moves a row up.** A link, a commit, a shipped thing. "We understand it now"
+does not count.
 
-| 尝试过什么 | 什么时候 | 为什么不行 | 什么条件下值得再试 |
-|---|---|---|---|
-| 私有仓库 + 分支保护 | S0 | 免费账户不支持（API 403），而分支保护是车道制的物理基础 | 升级 GitHub Pro 之后 |
-| `enforce_admins=false` 给人类留紧急通道 | S0 | Bot 用人类账号推送，admin 豁免等于 Bot 全员豁免，保护形同虚设 | 当 Bot 拥有独立账号时 |
+**Rows may move down.** A capability nobody has exercised in two projects is not mastered
+any more; it is remembered.
 
-> 第二条值得单独看一眼：它不是"配错了"，而是一个**在别的团队里完全正确、
-> 在本团队里恰好致命**的做法。这类知识最难获得，也最值得写下来。
+**Productised requires the rule of two.** See `versioning.md`. One project's solution is a
+solution, not a pattern.

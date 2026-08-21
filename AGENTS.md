@@ -1,104 +1,105 @@
-# AGENTS.md · 工作室仓库
+# AGENTS.md · read this before touching anything
 
-> **任何 Agent 在对本仓库做任何操作之前，必须先读完这一页。**
+This is **sunset-studio**: the framework, not a game. Nothing here belongs to any single
+project, and a change here reaches every project at once.
 
----
-
-## 这是什么仓库
-
-这是**工作室的操作系统**，不是任何一款游戏。
-
-这里放：宪法、章程、RELAY 协作框架、岗位定义、闸门定义、SOP、闸门工具、看板模板、
-工作室成熟度路线图、效能指标、能力账本、新项目启动手册。
-
-**这里不放任何一款具体游戏的内容。** 游戏在各自的项目仓库里。
-
-```
-sunset-studio  ← 你在这里。制度，跨项目，是复利资产
-     │ tag 钉版本
-     ├─────> sunset-club     《夕阳红俱乐部》
-     └─────> （未来的项目）
-```
-
-## 最重要的一条
-
-> **章程铁律一：制度层不允许出现任何一款具体游戏的内容。**
-
-检验方法：**把这份文档交给一个做卡牌游戏的团队，他们能不能用？**
-
-不能用的段落，就是混进来的项目内容，应该下沉到项目仓库。CI 会扫描已知的项目专名。
-
-可以写：「负责手感的岗位」「帧数据类规格」「经济类变更需双人复核」
-不能写：具体角色名、招式名、某款游戏的数值、某款游戏的里程碑
-
-## 第二重要的一条
-
-> **章程铁律二：制度的改动必须来自真实事故。**
-
-每一个改动 SOP 或闸门的 PR，描述里必须回答：
-
-> **这条改动，是哪一次真实的失败促成的？**（日期 / 任务号 / 事故记录链接）
-
-回答不出来 → 拒绝合并。凭想象设计的流程会往"看起来严谨"的方向膨胀，
-最终变成没人真的执行的仪式。
+If you are looking for a game, you are in the wrong repository.
 
 ---
 
-## 开工前的三句自检
+## The three iron laws
 
-**在你回复的第一段，必须回答这三句。答不出任何一句 → 不要开工，退回 @总督。**
+**One. Process and content stay separate.** No game's proper nouns in this repository. A
+gate checks it. The test: hand the paragraph to a team building a card game — can they use
+it?
 
-1. 我读了哪些文件？（列出精确路径）
-2. 我这次允许改哪些路径？（对照 `OWNERSHIP.md`）
-3. 我的验收命令是什么？跑通它意味着什么？
+**Two. Process changes come from real incidents.** Every change to a gate or an SOP names
+the failure that caused it, with a date and a link, marked `★`. A gate checks it. A
+framework that grows from imagination grows without bound, and every rule is a tax paid on
+every task forever.
 
-## 本仓库的红线
+**Three. Deleting beats adding.** When a retrospective produces a change, prefer removing a
+rule. The natural drift of any process is toward more, and only a standing preference for
+less corrects it.
 
-1. **不改 `docs/00-charter/`**（宪法与章程）。需要改 → 提 ADR，人类批准。
-2. **不在这里放游戏内容。** 见上。
-3. **不直接 push main。** 一切通过 PR。
-4. **改动 SOP / 闸门必须有事故背书。** 见上。
-5. **不移动已发布的 tag。** 各项目的镜像清单会记录 tag 指向的 commit，移动 tag 会被回源校验抓到。
-6. **改了闸门工具，必须同时改它的测试。** 闸门本身也需要被测试——
-   `lane-check.test.mjs` 第一次运行就抓出了尾部 `/**` 匹配不到文件的 bug；
-   没有那个测试，闸门会静默放行全部越界。
-7. **发版本前必须写 CHANGELOG，每条带 ★ 起因。**
+---
 
-## 验收命令
+## Before you start, answer three questions
+
+In the first paragraph of your reply. Cannot answer one? Do not start — ask P0.
+
+1. Which files did I read? (exact paths)
+2. Which globs may I change? (from `OWNERSHIP.md`)
+3. What is my acceptance command, and what does passing it prove?
+
+---
+
+## Red lines
+
+1. **Do not edit outside your lane.** `OWNERSHIP.md`. Out-of-lane pull requests are rejected
+   without the content being read.
+2. **Do not push to the default branch.** Everything goes through a pull request.
+3. **Do not change** `docs/00-charter/constitution.md` or `docs/00-charter/studio-charter.md`.
+   Those need an ADR and the human.
+4. **Do not approve your own work.**
+5. **Do not fabricate evidence.** A sample of finished work is re-run in a clean environment.
+   This is the one offence with no second chance.
+6. **Stop at three failed attempts.** Write a blocker report. There is no fourth.
+7. **Pull the andon cord** for: a red default branch, two contradicting specifications, a
+   violated frozen contract, or work resting on an assumption now known to be false.
+   Pulling unnecessarily is never penalised; failing to pull is.
+
+---
+
+## Acceptance
+
+Four commands. All four exit zero, or nothing merges.
 
 ```bash
-node tools/gates/lane-check.test.mjs   # 车道归属断言
-node tools/gates/selfcheck.mjs         # 死链 / 失效 SOP 引用 / 禁用术语 / 项目专名泄漏
+node tools/gates/gates.test.mjs                       # the gate engine's own tests
+node tools/gates/selfcheck.mjs                        # links, references, wording, iron law one
+node tools/gates/spec-check.mjs                       # the gate list matches the workflow
+node tools/gates/lane-check.mjs lane/<CODE>/T-XXX     # your own diff, before you push
 ```
 
-## 文档地图
+## Commits
 
-| 我想知道 | 读这个 |
+```
+<type>(<scope>): <subject> [T-XXX]
+```
+
+`feat` `fix` `docs` `refactor` `test` `chore` `perf` `content` `art`. Every commit carries
+the task id, and CI rejects those that do not.
+
+---
+
+## Where things are
+
+| Question | File |
 |---|---|
-| 工作室为什么存在、两个产品是什么 | `@studio/docs/00-charter/studio-charter.md` |
-| 不可谈判的规矩 | `@studio/docs/00-charter/constitution.md` |
-| 某个流程术语是什么意思 | `@studio/docs/00-charter/glossary.md` |
-| 协作制度为什么这么设计 | `@studio/docs/01-framework/framework.md` |
-| 日/周/里程碑的节奏 | `@studio/docs/01-framework/cadence.md` |
-| 岗位职责 | `@studio/docs/02-roles/roles.md` |
-| 什么算通过 | `@studio/docs/03-gates/gates.md` |
-| 车道表怎么写 | `@studio/docs/03-gates/ownership-schema.md` |
-| 怎么把 Bot 配起来 | `@studio/docs/04-grokbot/setup.md` |
-| SOP 原文 | `docs/04-grokbot/skills/` |
-| 工作室自己的里程碑 | `@studio/docs/05-studio/studio-roadmap.md` |
-| 怎么衡量团队效能 | `@studio/docs/05-studio/metrics.md` |
-| 我们现在会做什么了 | `@studio/docs/05-studio/capability-ledger.md` |
-| 怎么发框架版本 | `@studio/docs/05-studio/versioning.md` |
-| **怎么启动一款新游戏** | `@studio/playbooks/new-project.md` |
+| What is this studio for? | `docs/00-charter/studio-charter.md` |
+| What are the non-negotiable rules? | `docs/00-charter/constitution.md` |
+| What does this word mean? | `docs/00-charter/glossary.md` |
+| How does a day actually run? | `docs/01-framework/framework.md` |
+| What is scheduled, and who owns it? | `docs/01-framework/cadence.md`, `docs/04-grokbot/routines.md` |
+| What is my job? | `docs/02-roles/<CODE>.md` — this file is also your description |
+| What counts as passing? | `docs/03-gates/gates.md` |
+| Who owns which paths? | `OWNERSHIP.md`, format in `docs/03-gates/ownership-schema.md` |
+| How do I do X? | `docs/04-grokbot/skills/` — six SOPs, that is all of them |
+| How do I set up a team? | `docs/04-grokbot/setup.md` |
+| How do I start a new game? | `playbooks/new-project.md` |
+| What may be added to the framework? | `docs/05-studio/versioning.md` |
+| What do we actually know how to do? | `docs/05-studio/capability-ledger.md` |
 
-## 提交信息格式
+## Escalation
 
 ```
-<type>(<scope>): <描述>
+architecture / interfaces        -> A1
+quality / gates / acceptance     -> Q1
+environment / tooling / CI       -> O1
+conflicting documents / terms    -> S1
+priority, or genuinely unclear   -> P0  -> the human
 ```
 
-`type`：`feat` / `fix` / `docs` / `refactor` / `test` / `chore`
-`scope`：`charter` / `framework` / `roles` / `gates` / `sop` / `tools` / `studio`
-
-> 本仓库的提交**不要求** `[T-XXX]`——制度改动往往不来自任务卡，而来自事故。
-> 但必须在 PR 描述里写清 ★ 起因。
+**Four hours to answer.** "I cannot decide, escalating up" is a complete answer. Silence is
+not.

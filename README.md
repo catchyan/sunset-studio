@@ -1,99 +1,65 @@
-# Sunset Studio
+# sunset-studio
 
-**一个多 Agent 游戏开发工作室的操作系统。**
+The framework a game team runs on. Not a game.
 
-这个仓库里没有游戏。它装的是**做游戏的方法**——制度、岗位、闸门、SOP、工具。
-游戏在各自的项目仓库里。
+Games are output. A team that can build them repeatedly is the asset, and it only stays an
+asset if it lives somewhere separate from any one game.
 
 ```
-sunset-studio  ← 制度层。跨项目，是复利资产
-     │  tag 钉版本 + 只读镜像
-     ├─────> sunset-club     《夕阳红俱乐部》（第一款）
-     └─────> （未来的项目）
+sunset-studio    how we work, what counts as done, the tools that enforce it
+    │
+    │  pinned by .studio-version, mirrored read-only into docs/_studio/
+    ▼
+<a game repo>    what this game is, and how far along it is
 ```
+
+One question decides where anything belongs: **would a team building a completely different
+game still need this?**
 
 ---
 
-## 为什么要分开
+## What is here
 
-大多数团队只承认"游戏"这一个产品，把团队能力当作副产品。
-结果是每做完一款游戏，学到的东西留在少数几次对话里，下一款重新踩一遍同样的坑。
-
-这个工作室反过来：
-
-| | 产品 | 判断标准 |
-|---|---|---|
-| A | 游戏 | 好不好玩 |
-| **B** | **能持续产出游戏的工作室** | **第 N+1 款的启动成本是否显著低于第 N 款** |
-
-B 是主产品，A 是它的输出。**但没有 A 的 B 是空谈**——
-一个从没交付过游戏的"高效流程"什么都不是。
-
-使命写成一句可以被证伪的话：
-
-> **第二款游戏从"决定做"到"首个可玩垂直切片"的时间，不超过第一款的 50%。**
-
-做不到，就说明我们只是做了几款游戏，没有建成工作室。
-
-## 团队构成
-
-一个人类总制作人 + 一组 Grok Bot。
-
-人类保留三项不可委托的权力：批准宪法变更、品味评审、决定做什么游戏。
-其余一切的目标都是**逐步不需要人类**——衡量成熟度的关键指标就是每周人类介入次数是否在下降。
-
-## RELAY 协作框架
-
-针对弱 Agent 的五种典型失败模式设计，每条原则对应一种：
-
-| 原则 | 对治的失败 |
+| | |
 |---|---|
-| **R**ecord · 落纸为凭 | 上下文丢失。没进 git 的决定视为不存在 |
-| **E**nvelope · 任务信封 | 理解偏差。八段式任务卡，答不出就不许开工 |
-| **L**ane · 车道隔离 | 并发互相破坏。git worktree + 机检所有权表 |
-| **A**ssert · 断言验收 | 自我感觉良好。CI + 换人红队抽检，不许自证 |
-| **Y**ield · 及时让路 | 沉默卡死。三振出局、安灯、心跳 |
+| `docs/00-charter/` | The constitution, the studio charter, the process glossary |
+| `docs/01-framework/` | How a day runs; what is scheduled |
+| `docs/02-roles/` | One file per role — each file is also that bot's description |
+| `docs/03-gates/` | What counts as passing, and the ownership table format |
+| `docs/04-grokbot/` | Team setup, routines, and six SOPs |
+| `docs/05-studio/` | Metrics, maturity roadmap, capability ledger, versioning |
+| `playbooks/` | Starting a new project |
+| `templates/` | Board files a project starts from |
+| `tools/` | The gates, the board derivation, mounting, locking |
 
-详见 `docs/01-framework/framework.md`。
+## Where to start
 
-## 目录
+- **A new agent:** [`AGENTS.md`](AGENTS.md), then your own role card, then
+  [`/sop-task`](docs/04-grokbot/skills/sop-task.md). Nothing else is required reading.
+- **Setting up a team:** [`docs/04-grokbot/setup.md`](docs/04-grokbot/setup.md).
+- **Starting a game:** [`playbooks/new-project.md`](playbooks/new-project.md).
+- **Wondering why a rule exists:** [`CHANGELOG.md`](CHANGELOG.md). Every entry names the
+  failure that caused it.
 
-| 目录 | 内容 |
-|---|---|
-| `docs/00-charter/` | 章程、宪法、流程术语表 |
-| `docs/01-framework/` | RELAY 框架、协作节奏 |
-| `docs/02-roles/` | 14 个岗位的职责定义 |
-| `docs/03-gates/` | 11 道闸门、车道表格式 |
-| `docs/04-grokbot/` | Bot 配置、Routine、17 份 SOP |
-| `docs/05-studio/` | 成熟度路线图、效能指标、能力账本、版本发布 |
-| `playbooks/` | **怎么启动一款新游戏** |
-| `templates/` | 看板文件模板 |
-| `tools/` | 闸门工具、框架挂载脚本 |
+## Principles, stated plainly
 
-## 项目怎么用它
+**A rule no gate enforces is not a rule.** It is a wish, and it is charged to every task
+that has to read past it. Either write the check or delete the rule.
+
+**Nothing is added without an incident.** Every framework change names a real failure with a
+date. Otherwise the process grows forever, and each addition is permanent.
+
+**Deleting beats adding.** The natural drift of any process is toward more.
+
+**Facts have one home.** Task state lives in git; what a task is lives in its card. A second
+copy of anything is a second answer, and it will be the stale one.
+
+## Using it
 
 ```bash
-node mount.mjs --version v1.0.0   # 生成 .studio-version + docs/_studio/ 只读镜像
+node tools/mount.mjs --version v2.0.0     # in a project repo
 ```
 
-镜像是只读的，CI 逐字节校验。**想改制度，回这个仓库提 PR，不能在项目里就地改。**
-
-否则半年后各项目会有各自互不兼容的框架，工作室就不存在了。
-
-完整流程见 `playbooks/new-project.md`。
-
-## 三条铁律
-
-1. **制度与项目分离** —— 检验：把这份文档交给一个做卡牌游戏的团队，他们能不能用？
-2. **制度的改动必须来自真实事故** —— 说不出是哪次失败促成的，就不合并
-3. **删除的优先级高于新增** —— 一条规矩连续 3 个月没拦住任何东西，默认删除
-
-第三条是最难做到的。一个只会加规矩、从来删不掉规矩的系统，注定僵化到不可用。
-
-## 状态
-
-**S0 · 框架成型（进行中）**
-
-闸门已实测有效，包括对自身的负向验收。待 5 个核心 Bot 上线跑通完整流水线。
-
-路线图见 `docs/05-studio/studio-roadmap.md`。
+Creates `.studio-version` and `docs/_studio/`. See
+[`docs/05-studio/versioning.md`](docs/05-studio/versioning.md) for upgrading, and for what
+is allowed into the framework in the first place — the default answer is no.

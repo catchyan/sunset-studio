@@ -3,11 +3,15 @@ name: gates
 on:
   pull_request:
     branches: [main]
+    # Labels are half of every exception, so applying one has to re-run the gates.
+    # Without these, a label added after opening is invisible to the run that judged
+    # the pull request, and the only way to re-evaluate is an empty commit.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
 jobs:
-  discipline:
+  lane:
     name: lane
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -17,52 +21,88 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: 提取 Bot 代号
-        id: bot
-        run: |
-          BRANCH="${{ github.head_ref }}"
-          if [[ "$BRANCH" =~ ^lane/([A-Z][0-9])/ ]]; then
-            echo "code=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::分支名必须是 lane/<代号>/<描述>，当前是 $BRANCH"
-            exit 1
-          fi
-
-      - name: G5 车道闸门
+      - name: G2 lane
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: node tools/gates/lane-check.mjs "${{ steps.bot.outputs.code }}" "origin/${{ github.base_ref }}"
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: node tools/gates/lane-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
 
-      # 制度改动必须有事故背书，否则流程会往"看起来严谨"的方向无限膨胀
-      - name: 铁律二 · SOP/闸门变更需事故背书
+  envelope:
+    name: envelope
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: G3 envelope and evidence
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: |
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
-          if echo "$CHANGED" | grep -qE '^docs/04-grokbot/skills/|^docs/03-gates/'; then
-            if ! echo "$PR_BODY" | grep -q '★'; then
-              echo "::error::改动了 SOP 或闸门，但 PR 描述里没有 ★ 起因。"
-              echo "章程铁律二：制度的改动必须来自真实事故。"
-              echo "请回答：这条改动是哪一次真实的失败促成的？（日期 / 任务号 / 事故记录链接）"
-              exit 1
-            fi
-          fi
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: node tools/gates/envelope-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
 
-  checks:
-    name: checks
+  docs:
+    name: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      # 闸门本身也需要被测试。第一次运行它时它就抓出了 glob 的 bug——
-      # 一道假装在工作的闸门比没有闸门更危险，因为所有人都以为自己被保护着。
-      - name: 车道闸门自测
-        run: node tools/gates/lane-check.test.mjs
+      # The gates decide what merges, so they are tested before they are trusted.
+      # The first run of this suite found a glob bug that had been approving
+      # out-of-lane changes.
+      - name: G4 gate engine tests
+        run: node tools/gates/gates.test.mjs
 
-      - name: 仓库自检（死链 / SOP 引用 / 术语 / 铁律一）
+      - name: G4 selfcheck
         run: node tools/gates/selfcheck.mjs
+
+      - name: G4 gate list matches this workflow
+        run: node tools/gates/spec-check.mjs
+
+  cause:
+    name: cause
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Constitution article 14. Without this the process grows from imagination,
+      # and every addition is charged to every future task.
+      - name: G7 framework changes cite an incident
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if echo "$CHANGED" | grep -qE '^docs/04-grokbot/skills/|^docs/03-gates/|^tools/gates/'; then
+            if ! echo "$PR_BODY" | grep -q '★'; then
+              echo "::error::This PR changes a gate or an SOP but cites no cause."
+              echo "Mark the cause with ★: which real failure prompted this? Date, task id, or incident link."
+              exit 1
+            fi
+          fi
+
+  summary:
+    name: summary
+    runs-on: ubuntu-latest
+    needs: [lane, envelope, docs, cause]
+    if: always()
+    steps:
+      - name: Verdict
+        run: |
+          echo "lane=${{ needs.lane.result }} envelope=${{ needs.envelope.result }} docs=${{ needs.docs.result }} cause=${{ needs.cause.result }}"
+          for r in "${{ needs.lane.result }}" "${{ needs.envelope.result }}" "${{ needs.docs.result }}" "${{ needs.cause.result }}"; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "::error::Not every gate is green. Do not merge, and do not merge as an administrator either."
+              exit 1
+            fi
+          done
+          echo "All gates green."

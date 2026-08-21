@@ -1,158 +1,91 @@
-# 手册 · 启动一款新游戏
+# Starting a new project
 
-> 使用者：P0 总督（S3 起可独立执行）+ 人类总制作人（立项决策不可委托）
-> 目标：把"启动一款新游戏"从一次探险，变成一条可重复执行、每次都更快的流程。
->
-> **每次执行完，必须回来更新这份手册。** 这份手册的迭代速度，就是工作室的成长速度。
+From an idea to a first playable slice. Follow it in order.
 
----
-
-## 阶段 0 · 立项（人类，不可委托）
-
-人类需要回答的，只有这四个问题。**不要让 Bot 替你回答，也不要在回答清楚之前开工。**
-
-1. **这是什么游戏？** 一句话，包含类型与核心体验。
-2. **给谁玩？** 具体到"什么情况下的什么人，为什么会选择玩它"。
-3. **什么算成功？** 可证伪的判据。
-4. **明确不做什么？** ← 这一条最重要，也最常被跳过。
-
-第 4 条决定项目会不会失控。没有"非目标清单"的项目，会在每一次"要不要加个 X"的讨论里慢慢膨胀，
-最终变成一个什么都有一点、什么都不出色的东西。
-
-**产出**：项目仓库的 `docs/00-charter/vision.md`。
+The measurement that matters: **how long from the first commit to something a person can
+play for five minutes.** Every step here is judged by whether it shortens that.
 
 ---
 
-## 阶段 1 · 建仓与挂载框架（约 30 分钟）
+## Phase 0 · Four questions, answered by the human
 
-```bash
-# 1. 建仓（公开，否则免费账户开不了分支保护）
-gh repo create <game> --public --clone && cd <game>
+Written down before anything is created. Not delegated — these are the decisions that
+determine everything an agent will later do without asking.
 
-# 2. 挂载工作室框架
-curl -sL https://raw.githubusercontent.com/catchyan/sunset-studio/main/tools/mount.mjs -o mount.mjs
-node mount.mjs --version v1.0.0     # 生成 .studio-version + docs/_studio/ 只读镜像 + CI 校验任务
-rm mount.mjs
+1. **What is it?** One sentence a stranger would understand.
+2. **Who is it for?** Not "everyone". A specific person with a specific evening free.
+3. **What does success look like?** A number and a date.
+4. **What are we explicitly not doing?** The most valuable answer of the four, because it is
+   the only one that will still be constraining scope in month four.
 
-# 3. 从模板初始化看板
-node docs/_studio/tools/init-board.mjs
+Into `docs/00-charter/vision.md`. Human-owned, and no bot may change it.
 
-# 4. 分支保护（enforce_admins 必须 true，理由见能力账本反面清单）
-cat docs/_studio/templates/branch-protection.json \
-  | gh api -X PUT repos/{owner}/<game>/branches/main/protection --input -
+## Phase 1 · Repository and framework
 
-# 5. 验证闸门是活的
-node docs/_studio/tools/gates/lane-check.test.mjs
-node docs/_studio/tools/gates/selfcheck.mjs
-git push origin main    # 必须被 GH006 拒绝
-```
+Follow `docs/04-grokbot/setup.md` steps 1 through 3: create the repository public, mount the
+framework, turn on branch protection with `enforce_admins`.
 
-**完成判据**：第 5 步的直推被拒绝，且两个闸门自测通过。
+Do not skip the credential check before the first push. A public repository's history is
+permanent, and the only fix afterwards is deleting and recreating the repository.
 
-> ⚠️ 不满足就不要往下走。分支保护是车道制的物理基础，
-> 没有它，后面所有的闸门都只是建议。
+## Phase 2 · The project's own documents
 
----
+Five files, and only these five, before any code:
 
-## 阶段 2 · 项目层必填文档（第一天）
-
-框架继承下来了，但下面这些**必须每个项目自己写**，因为它们是项目特有的：
-
-| 文档 | 谁写 | 为什么不能继承 |
-|---|---|---|
-| `docs/00-charter/vision.md` | 人类 | 立项产物 |
-| `@studio/docs/00-charter/glossary.md` | S1 | 游戏术语因项目而异；流程术语已在框架里 |
-| `@studio/docs/03-gates/ownership-schema.md` | A1 | **车道表必须按本项目的实际目录结构写** |
-| `docs/04-plan/roadmap.md` | P0 | 里程碑与放行条件 |
-| `board/sprint.md` | P0 | |
-
-### 车道表是这一阶段的关键产出
-
-它是 G5 闸门的唯一依据，写错了会导致两种故障，且都不容易诊断：
-
-- **划分太粗** → 两个 Bot 抢同一批文件，天天冲突
-- **有遗漏** → 出现"无归属"路径，任何人改都被拒，任务永远做不完
-
-**写完立刻验证**：照着 `docs/_studio/tools/gates/lane-check.test.mjs` 的样子，
-为本项目的关键路径写一组归属断言并跑通。**没有断言的车道表不可信**——
-框架自己的那份第一次跑就抓出了 `/**` 匹配不到文件的 bug。
-
----
-
-## 阶段 3 · 配置班底
-
-从 `docs/_studio/docs/02-roles/roles.md` 里**挑**岗位，不要全上。
-
-| 项目阶段 | 建议编制 |
+| File | Contains |
 |---|---|
-| 立项期 | P0 总督、A1 架构、Q1 闸门、S1 典藏、O1 运维（**5 人核心，跨项目常驻**） |
-| 原型期 | +D1 设计、E1 模拟、E2 客户端 |
-| 成型期 | +V1 视效、U1 声音、E3 服务端 |
-| 运营期 | +C1 经济、T1 平衡、N1 编年史 |
+| `docs/00-charter/vision.md` | The four answers |
+| `docs/00-charter/glossary.md` | This game's vocabulary, one definition each |
+| `docs/03-process/ownership.md` | Paths to owners, in the frozen format |
+| `docs/03-process/staffing.md` | Which roles activate when, and the `{{...}}` values |
+| `docs/04-plan/roadmap.md` | Milestones, each with a release condition |
 
-> **核心五人是跨项目常驻的**，不需要重新入职，但要更新它们 description 里的"当前项目"一节。
-> 这本身就是复利：第二款游戏的前五个岗位是零成本的。
+Every milestone's release condition must be something a person can observe. "Combat feels
+good" is not one. "Four players clear the first dungeon in under twelve minutes with no
+desync" is.
 
-**每个新 Bot 的入职测试**：复述自己的边界（用自己的话）+ 提交一个心跳 PR 并通过 CI。
-复述错了 → **改它的 description，不要口头纠正**。这是"修流程不修人"的第一次实践。
+## Phase 3 · Staff the minimum
 
----
+Five roles at milestone zero: P0, A1, Q1, S1, O1. Everyone else joins when their lane has
+work — a role with nothing to do still consumes attention and still has to be read around.
 
-## 阶段 4 · 契约先行
+`staffing.md` records both the schedule and the placeholder values the role cards need.
 
-**在派发任何实现任务之前**，A1 必须先冻结第一批契约。
+## Phase 4 · Contracts before code
 
-判断哪些契约需要在 M1 之前冻结的方法：**列出前两个里程碑要写的模块，
-找出任意两个模块之间传递的数据结构。** 那就是需要契约的地方。
+The architect writes the interfaces the first slice needs, and they are merged before anyone
+builds against them. Two agents implementing toward an interface that does not exist yet
+will produce two interfaces and discover it at integration.
 
-> 不要提前起草更远的契约。M3 的网络协议要等 M1 跑起来、
-> 知道每 tick 到底要同步什么之后再写。**过早冻结的契约基于错误假设，比没有契约更糟。**
+## Phase 5 · One vertical slice
 
-**总督的硬约束**：任务信封第 4 段引用的契约若是 `DRAFT`，这张卡不许发出去。
+Not a system. A slice: one character, one room, one enemy, one loop that ends. Ugly is
+acceptable; incomplete is not.
 
----
+Horizontal work — a complete input system, a complete rendering layer — produces months with
+nothing playable, and nobody can tell whether any of it is any good.
 
-## 阶段 5 · 第一个垂直切片
+## Phase 6 · Review, then improve the framework
 
-第一个里程碑的目标**不是**做出多少内容，而是：
+At the end of the first milestone:
 
-> **打通一条从输入到画面到测试到部署的最窄通路，让人类能真的玩到。**
+1. Update the capability ledger honestly, including the negative list.
+2. Measure X1 and X2 and write them down, whatever they say.
+3. For each framework change made during the project, check that it names a real incident.
+4. Fix this playbook where reality did not match it.
 
-宁可只有一个角色、一招、一个敌人，也要让这条链路是完整的。
-
-理由：这条链路上的每一个环节都会出问题，而**越早发现，改起来越便宜**。
-一个做了三个月才第一次跑起来的项目，会在第一次跑起来的那天发现十个架构级问题。
-
-**X1 指标（启动成本）就是量到这里为止的天数。** 见 `@studio/docs/05-studio/metrics.md`。
-
----
-
-## 阶段 6 · 项目结束后（不可省略）
-
-**这一阶段决定了这个项目对工作室有没有贡献。跳过它，这款游戏就只是一款游戏。**
-
-1. 跨项目复盘（人类 + P0 + A1 + Q1）
-2. 更新 `capability-ledger.md`：哪些能力升级了？**哪些要诚实地降级？**
-3. 检查二次法则：有没有东西该上升到 `@studio/*`？走 `/sop-elevate`
-4. 结算 X1 / X2，写进 `@studio/docs/05-studio/metrics.md` 的历史表
-5. **回来改这份手册**：这次哪一步卡住了？哪一步是多余的？
-
-第 5 条是本手册存在的意义。第一次执行它可能要三天，
-如果第五次执行还要三天，那说明前四次的经验一次都没沉淀下来。
+Step four is the one that compounds. Everything else improved this project; this improves
+every project after it.
 
 ---
 
-## 检查清单（打印出来用）
+## Warnings from previous projects
 
-```
-[ ] 人类回答了立项四问，其中包含明确的"不做什么"
-[ ] 仓库已建（公开），框架已挂载并钉版本
-[ ] 分支保护生效，enforce_admins=true，实测直推被拒
-[ ] 两个闸门自测通过
-[ ] 车道表写完，且有本项目的归属断言并跑通
-[ ] 核心五人到位（复用），项目岗位按阶段配置
-[ ] 每个新 Bot 通过入职测试（复述边界 + 心跳 PR）
-[ ] 第一批契约已冻结，之后才派实现任务
-[ ] 第一个垂直切片人类真的玩到了
-[ ] X1 已记录
-```
+- **Set up branch protection before the first bot exists.** Retrofitting discipline onto a
+  team that has already merged without it does not work.
+- **Watch every gate fail once before trusting it.** A gate that has never been red has
+  never been tested, and roughly half of them are broken in some way on first writing.
+- **Do not staff ahead of the work.** Idle roles generate discussion, and discussion looks
+  like progress.
+- **The vision document is the human's.** An agent that edits it has redefined the project
+  and will do so without noticing.

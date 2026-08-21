@@ -1,103 +1,71 @@
-# SOP · 架构决策记录（ADR）
+# /sop-adr · Record a decision
 
-**何时使用**：
-- 任何重大技术选型或变更
-- 需要修改 FROZEN 契约
-- 需要修改宪法 / 愿景（这类由人类批准）
-- 跨领域争议的裁决结果
-- 任何"以后有人会问为什么当初这么做"的决定
+**Trigger:** a decision that is expensive to reverse. Choosing an engine, a network model, a
+data format, a dependency the whole codebase will import. Also: any change to a `FROZEN`
+contract, and any ruling a governor makes that another role disagreed with.
 
-**输出**：`docs/02-tech/adr/NNNN-<短横线标题>.md`，并在 `docs/02-tech/adr/INDEX.md` 登记。
+Rule of thumb: if undoing it in three months would cost more than a day, write it down now.
 
 ---
 
-## 为什么必须写
+## 1. One file, numbered
 
-这个项目的 Bot 会换会话、会失忆、会被重建。**ADR 是唯一能防止半年后有人推翻一个正确决定的东西。**
+`docs/02-tech/adr/NNNN-short-name.md`, next number in sequence. Add it to the index.
 
-判据很简单：**如果没有 ADR，六个月后没人能说清为什么当初选了 A 不选 B，那么 A 迟早会被人改成 B。**
-
----
-
-## 格式（严格照抄）
+## 2. Six sections. All of them.
 
 ```markdown
-# ADR-0007 · 联机方案先用 Colyseus 而非 geckos.io
+# NNNN · <decision in one line>
 
-- 状态: PROPOSED | ACCEPTED | SUPERSEDED by ADR-XXXX | REJECTED
-- 日期: 2026-08-20
-- 提出人: A1
-- 决策人: A1（联签 P0）
-- 影响范围: packages/server, packages/client, docs/02-tech/architecture.md §4
+- Status: PROPOSED | ACCEPTED | SUPERSEDED by NNNN
+- Date: <ISO date>
+- Deciders: <codes>
 
-## 背景
-<两三句。什么问题逼我们必须做这个决定？现在的约束是什么？
- 不要写历史故事，写当下的约束。>
+## Context
+What forced a choice. What was true at the time — constraints, deadlines, what we did not
+yet know. This section is what makes the decision legible later; without it the decision
+looks arbitrary and someone reverses it for reasons you already considered.
 
-## 选项
+## Options
+At least two, each with its real cost. A single-option ADR is a rationalisation.
 
-### 选项 A：Colyseus（WebSocket）
-- 优点：房间/匹配/状态同步开箱即用；MIT 可自托管；调试简单；无 NAT 穿透问题
-- 缺点：TCP 队头阻塞，丢包时延迟尖峰
-- 成本：低
+## Decision
+What we chose.
 
-### 选项 B：geckos.io（WebRTC / UDP）
-- 优点：UDP 语义，丢包不阻塞，快节奏动作游戏体感更平滑
-- 缺点：需要信令、可能需要 TURN；调试困难；房间/匹配要自己写
-- 成本：中高
+## Consequences
+What this makes easy. What this makes hard. What it forecloses.
 
-### 选项 C：<至少要有两个选项，一个选项不叫决策>
-
-## 决策
-选 A。
-
-## 理由
-<必须能被反驳。写清楚在什么假设下 A 更好。>
-1. M3 的目标是验证"4 人打起来爽不爽"，不是"网络方案最优"。先用成本低的验证玩法。
-2. 我们的战斗节奏（30Hz tick，100ms 插值缓冲）对丢包的敏感度低于 FPS。
-3. Colyseus 的房间与匹配能省掉大量自研工作，这些工作与玩法验证无关。
-
-## 后果
-- 好的：M3 能更快到达可测状态
-- 坏的：如果实测延迟不可接受，M4 需要一次网络层重写（估计 1–2 周）
-- 缓解：packages/protocol 做传输无关的抽象，切换时不动业务代码
-
-## ★ 回滚条件（必填）
-如果 M3 的网络测试台在 100ms RTT + 30ms 抖动 + 2% 丢包下，
-回滚位移 >0.5 单位的次数超过 3 次/分钟，则本决策作废，改用选项 B，
-并写一个新的 ADR 标记本条为 SUPERSEDED。
-
-## 相关
-- docs/02-tech/architecture.md §4
-- docs/04-plan/roadmap.md M3 放行条件
+## Rollback condition
+The observable signal that would mean this was wrong, and what we would do then.
 ```
 
+## 3. The rollback condition is not optional
+
+"If server tick cost exceeds 8 ms at 40 players, this model does not scale and we move to X."
+
+A decision with no falsifying condition cannot be revisited on evidence, only on argument —
+and arguments are won by whoever is most insistent, which is not a property correlated with
+being right. Weak agents in particular will defend a recorded decision indefinitely unless
+the document itself tells them when to stop.
+
+## 4. Twenty-four hours to object
+
+Post it as PROPOSED and name who should look. Any role may object with a reason and an
+alternative; "I do not like it" is not an objection.
+
+Silence after 24 hours is consent. This is deliberate — waiting for enthusiastic agreement
+from every role means nothing is ever decided.
+
+## 5. Accept it, then follow it
+
+Change the status to ACCEPTED and merge. From then on, code that contradicts an accepted ADR
+is rejected at review, and the correct response to disagreeing is a new ADR that supersedes
+it — never a quiet exception in one file.
+
 ---
 
-## 三条纪律
+**Definition of done:** merged with status ACCEPTED, listed in the index, and the rollback
+condition is something a person could actually observe.
 
-1. **至少两个选项。** 一个选项不叫决策，叫通知。如果真的只有一条路，也要写"选项 B：不做（后果是……）"。
-2. **必填回滚条件。** 一个没有回滚条件的决策，就是一个赌博。回滚条件要**可判定**（有数字或明确现象），不能是"如果效果不好"。
-3. **ADR 不可删除、不可改写历史。** 决策变了，写新的 ADR，把旧的标记为 `SUPERSEDED by ADR-XXXX`。
-
----
-
-## 流程
-
-1. 提出人写 `PROPOSED` 状态的 ADR，开 PR
-2. 在常委会群里 @ 相关方，给 **24 小时**异议期
-3. 有异议 → 在 PR 上讨论，**不要在群里刷**（群里超过 3 轮无结论就该转这里了）
-4. 决策人批准 → 状态改 `ACCEPTED`，合并
-5. @典藏 S1 更新 `docs/02-tech/adr/INDEX.md`
-6. 如果 ADR 影响了某份规格 → 同一个 PR 里一并更新那份规格（否则会被漂移检测抓到）
-
-## 谁能做决策人
-
-| ADR 类型 | 决策人 | 联签 |
-|---|---|---|
-| 技术架构、契约、依赖 | A1 | P0 或 Q1（A1 不能批准自己提的契约变更） |
-| 玩法、手感、数值结构 | D1 | P0 |
-| 质量标准、闸门 | Q1 | P0 |
-| 经济结构 | C1 | P0 + 模拟器报告 |
-| 优先级、范围、里程碑 | P0 | — |
-| **宪法、愿景、商业模式** | **人类** | — |
+**Escalation:** an unresolved objection after 24 hours goes to the architect, who decides
+unilaterally. A decision the architect cannot make goes to the human.
