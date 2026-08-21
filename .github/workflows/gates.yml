@@ -3,6 +3,10 @@ name: gates
 on:
   pull_request:
     branches: [main]
+    # Labels are half of every exception, so applying one has to re-run the gates.
+    # Without these, a label added after opening is invisible to the run that judged
+    # the pull request, and the only way to re-evaluate is an empty commit.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
