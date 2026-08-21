@@ -60,16 +60,17 @@ decision recorded in `board/decisions/`, not a quiet approval.
 
 Merge it. The board updates itself from the pull request; there is no status file to edit.
 
-If GitHub still says the merge is blocked while the newest run is green, look for an older
-run on the same commit that failed. Labels and approvals are read when a run starts, so a
-run that started before the `break-glass` label or before your review will have failed for
-a reason that is no longer true, and its verdict stays on the commit. Re-run it:
+If GitHub still says the merge is blocked while the newest run is green, older runs on the
+same commit are still red. Labels and approvals are read when a run *starts*, so every run
+that began before the label or before your review failed for a reason that is no longer
+true — and protection counts all of them, not the newest. Re-run every one:
 
 ```bash
-gh run rerun <run-id> --failed
+gh run list --branch <branch> --limit 10
+gh run rerun <run-id> --failed   # for each run that failed
 ```
 
-Never merge past it with `--admin`. The stale verdict is noise, but the habit of stepping
+Never merge past them with `--admin`. The stale verdict is noise, but the habit of stepping
 around a red check is not.
 
 ---

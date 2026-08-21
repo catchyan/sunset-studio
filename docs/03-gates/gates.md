@@ -236,8 +236,10 @@ gh pr review <n> --comment --body "APPROVED-BY: Q1"
 
 The same applies to labels. A run reads the labels and the timeline as they stood when it
 started, so a run that began before the label or the review keeps its now-obsolete verdict on
-the commit, and branch protection keeps seeing it. Re-run it with `gh run rerun <id> --failed`;
-do not merge past it with `--admin`.
+the commit. Protection counts **every** run on the commit, not the most recent one, so one
+stale red run blocks a merge that six green ones allow. List them with
+`gh run list --branch <branch>` and re-run each failure with `gh run rerun <id> --failed`; do
+not merge past them with `--admin`.
 
 **This is auditable, not authenticated.** Every agent drives one GitHub account, so GitHub's
 own review approval can never be satisfied — an account cannot approve its own pull request —

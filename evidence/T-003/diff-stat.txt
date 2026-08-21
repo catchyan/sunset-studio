@@ -1,10 +1,14 @@
- CHANGELOG.md                         | 44 ++++++++++++++++++++++++++++++++++++
+ CHANGELOG.md                         | 48 ++++++++++++++++++++++++++++++++++++
  docs/00-charter/constitution.md      |  2 +-
- docs/03-gates/gates.md               | 19 ++++++++++++----
+ docs/03-gates/gates.md               | 21 +++++++++++++---
  docs/04-grokbot/setup.md             |  5 ++--
- docs/04-grokbot/skills/sop-review.md | 12 ++++++++++
+ docs/04-grokbot/skills/sop-review.md | 13 ++++++++++
  docs/04-grokbot/skills/sop-task.md   |  5 ++--
- tools/gates/envelope-check.mjs       | 14 +++++++++---
- tools/gates/lane-check.mjs           |  4 +++-
+ evidence/T-003/command.txt           |  3 +++
+ evidence/T-003/diff-stat.txt         | 10 ++++++++
+ evidence/T-003/env.txt               |  4 +++
+ evidence/T-003/output.txt            | 24 ++++++++++++++++++
+ tools/gates/envelope-check.mjs       | 14 ++++++++---
+ tools/gates/lane-check.mjs           |  4 ++-
  tools/mount.mjs                      |  2 +-
- 9 files changed, 93 insertions(+), 14 deletions(-)
+ 13 files changed, 141 insertions(+), 14 deletions(-)

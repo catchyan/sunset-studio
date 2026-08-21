@@ -36,8 +36,12 @@ approving review, failed for those reasons, and left their verdicts on the commi
 run was green on all seven gates and GitHub still reported `BLOCKED`, because labels and the
 timeline are read when a run *starts*.
 
-- `gates.md` and `sop-review.md` now name the symptom, and say to re-run with
-  `gh run rerun <id> --failed` rather than merge past it with `--admin`.
+Protection counts every run on the commit, not the most recent, which is the part that makes
+this expensive: re-running the newest failure is not enough, and on the pull request that
+fixed it three separate runs had to be re-run before the merge button turned green.
+
+- `gates.md` and `sop-review.md` now name the symptom, say to list the runs and re-run each
+  failure with `gh run rerun <id> --failed`, and say not to merge past them with `--admin`.
 
 No mechanism can fix this from inside a workflow: a run cannot invalidate the verdict of a run
 that finished before it. Recognising it is the whole remedy.
