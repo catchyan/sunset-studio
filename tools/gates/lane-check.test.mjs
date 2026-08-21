@@ -69,12 +69,15 @@ for (const [file, want] of S) {
 // 无归属必须是可检测的状态，不能悄悄放行
 check(resolve('unknown/path.txt', synthetic) === null, '未覆盖路径返回 null（会被判为无归属）');
 
-// ─────────────────── 3. 本仓库自己的所有权表 ───────────────────
-console.log('\n【本仓库 OWNERSHIP.md】\n');
+// ─────────────────── 3. 工作室自己的所有权表 ───────────────────
+// 本文件会被镜像进各个项目仓库，在那里跑时只该测引擎（上面两节）。
+// 项目自己的表由项目写断言，见 playbooks/new-project.md 阶段 2。
+const IN_STUDIO = existsSync('docs/00-charter/studio-charter.md');
 
-if (!existsSync('OWNERSHIP.md')) {
-  check(false, '找不到 OWNERSHIP.md');
+if (!IN_STUDIO) {
+  console.log('\n【工作室 OWNERSHIP.md】跳过 — 当前在项目仓库，只测引擎');
 } else {
+  console.log('\n【工作室 OWNERSHIP.md】\n');
   const rows = parseOwnership(readFileSync('OWNERSHIP.md', 'utf8'));
   console.log(`解析出 ${rows.length} 行\n`);
   const R = [
