@@ -1,5 +1,4 @@
-﻿ .github/workflows/gates.yml | 16 ++++++++++------
- CHANGELOG.md                | 13 +++++++++++++
- board/tasks/T-001.md        |  3 +++
- docs/03-gates/gates.md      |  9 +++++++--
- 4 files changed, 33 insertions(+), 8 deletions(-)
+ CHANGELOG.md                   | 10 ++++++++++
+ evidence/T-001/output.txt      |  2 +-
+ tools/gates/envelope-check.mjs | 15 +++++++++++++++
+ 3 files changed, 26 insertions(+), 1 deletion(-)

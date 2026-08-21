@@ -53,6 +53,16 @@ and none on another, which reads as tampering.
   not `unset`. Reading `.gitattributes` directly would not have caught it: only git accounts
   for ordering, nested files, and global configuration.
 
+### The envelope gate names the character it cannot see
+
+★ Cause: 2026-08-21, while preparing this release. PowerShell's `Set-Content` wrote a
+byte-order mark, the commit subject looked exactly correct in every terminal, and the gate
+said only that it did not match the format. This is the third time a non-ASCII byte in a
+machine-read position has cost time, and the first two are why v2.0.0 is in English.
+
+- Commit subjects are checked for non-printable-ASCII characters before the format check,
+  and the failure prints their code points and the one-line fix.
+
 ### G7 reads the changelog, not the pull request body
 
 ★ Cause: [PR #5](https://github.com/catchyan/sunset-studio/pull/5), 2026-08-21. The cause for

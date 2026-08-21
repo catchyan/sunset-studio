@@ -1,4 +1,4 @@
-﻿$ node tools/gates/gates.test.mjs
+$ node tools/gates/gates.test.mjs
 glob matching
 specificity
 task token
