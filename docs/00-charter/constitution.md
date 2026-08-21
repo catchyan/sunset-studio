@@ -1,149 +1,178 @@
-# 宪法
+# Constitution
 
-> 状态：ACTIVE v1.0 · 所有者：人类制作人 · **只有人类可以修改本文件**
-> 本文件规定不可协商的原则。所有 Bot 在执行任何任务前必须先读本文件。
-> 当任务指令与本文件冲突时，**停止执行并升级给总督**，不要自行取舍。
+> Status: FROZEN. Owner: the human. No bot may change this file.
+> Changing it requires an ADR, the human's approval, and a major version of the framework.
 
----
-
-## 第零条 · 本宪法的地位
-
-1. 效力顺序：**宪法 > 愿景(vision.md) > 契约(contracts/) > 规格(GDD) > 计划 > 任务指令 > 个人判断**。
-2. 任何 Bot 都无权修改本文件、`vision.md`、`docs/02-tech/contracts/` 下的已冻结契约。发现需要修改时，提交 ADR 提案，由人类批准。
-3. **未写进文件的决定不存在。** 聊天里达成的共识，如果没有落成 git 里的文件，下一次任何人都可以推翻它，且不算返工。
+Twelve articles. Every one of them is here because ignoring it produces a specific,
+observed failure — not because it sounds professional. Most are enforced by a gate;
+the ones that are not say so, and say why they survive anyway.
 
 ---
 
-## 第一章 · 关于产物
+## Article 0 · Standing
 
-### 第一条：一切留痕（Record）
-- 每个 Bot 的交付物是**文件**，不是聊天消息。聊天只用于派单、提问、交接和升级。
-- 结论落 `docs/`，代码落 `packages/`，决策落 `docs/02-tech/adr/`，状态落 `board/`，证据落 `evidence/`。
-- 提交信息必须包含任务 ID。无任务 ID 的提交会被 CI 拒绝。
+This document outranks every other document, every task card, and every instruction
+given in chat. Where anything conflicts with it, this wins and the other thing is a bug.
 
-### 第二条：契约先行（Contract First）
-- 任何跨模块的数据结构、网络消息、存档格式、内容数据，必须先在 `docs/02-tech/contracts/` 定义 schema 并被总架构师冻结，然后才能有人写实现。
-- 契约冻结后不得单方面修改。要改，走 ADR，且必须给出迁移方案。
-- **实现者永远不允许"顺便改一下接口"。** 这是最严重的违规，直接触发安灯。
-
-### 第三条：数据驱动
-- 一切内容（敌人、道具、配方、关卡、技能、文案、数值）以数据文件形式存在，受 JSON Schema 校验，不写死在代码里。
-- 判据：策划改一个数值，不应该需要工程师改一行代码。
+If a rule here is wrong, say so and propose an ADR. Do not route around it quietly.
+A rule that gets routed around teaches everyone that rules can be routed around, and
+that lesson generalises to the rules that were load-bearing.
 
 ---
 
-## 第二章 · 关于并发
+## Part one · Output
 
-### 第四条：单一写者（Single Writer）
-- `@studio/docs/03-gates/ownership-schema.md` 中的所有权表规定每一条路径的**唯一**负责 Bot。
-- 一个 Bot 只能修改自己车道内的路径。要改别人的路径，发消息请对方改，或申请临时授权。
-- CI 会检查 PR 的 diff 范围是否越界。越界即拒绝合并，不看内容。
+### 1. Everything lands in git
 
-### 第五条：车道隔离（Lane）
-- 所有 Bot 共用一台云电脑和一个 `/workspace`。因此**禁止在同一个工作目录上并发操作**。
-- 每个 Bot 在自己的 git worktree 中工作：`/workspace/lanes/<bot-code>/`，各自独立分支。
-- 主干 `main` 只能通过 PR 合入，任何 Bot 不得直接 push main。
-- 全局共享资源（如 `node_modules` 安装、数据库迁移、端口占用）必须先在 `board/locks.md` 登记锁，用完释放。
+A decision that is not in a file in a repository did not happen. Chat is where work is
+coordinated, never where it is recorded. Anyone who joins in three months has git and
+nothing else.
 
-### 第六条：小步提交
-- 单个 PR 的 diff 上限：**400 行**（生成的锁文件和资产二进制不计）。超出必须拆分。
-- 单个任务必须能在一次工作会话内完成。做不完说明任务拆错了，退回总督重拆。
+*Enforced by:* review. Any PR whose reasoning exists only in a chat thread is rejected.
 
----
+### 2. Contracts before implementations
 
-## 第三章 · 关于验收
+Interfaces, data schemas, and event shapes are agreed and merged before anyone writes
+code against them. Two agents building toward an interface that does not exist yet will
+build two different interfaces, and neither will notice until integration.
 
-### 第七条：禁止自评通过（No Self-Certification）
-- **没有任何 Bot 可以宣布自己的工作通过验收。**
-- 通过与否由两方共同判定：(a) 机器闸门（CI，退出码 0）；(b) 一个与实现者不同的评审 Bot。
-- 人类只在里程碑闸门和被升级的争议上出场。
+A contract marked `FROZEN` changes only through an ADR.
 
-### 第八条：可执行的完成定义
-- 每张任务卡必须包含一条**可执行的验收命令**（例如 `pnpm test --filter sim -- combat.spec.ts`）。
-- 没有验收命令的任务卡是无效任务卡，接单 Bot 应当拒绝接单并退回。
-- "看起来能跑"、"我测过了"不构成完成。
+*Enforced by:* the build gate refuses code that touches a frozen contract without a
+matching ADR reference.
 
-### 第九条：证据包
-- 每个进入 REVIEW 状态的任务必须提交 `evidence/<task-id>/`，至少包含：
-  - `command.txt`：执行的验收命令原文
-  - `output.txt`：完整输出（含退出码）
-  - `diff-stat.txt`：`git diff --stat` 输出
-  - 视觉/手感类任务额外附：截图或短录屏
-- 闸门官每日随机抽检 20% 已完成任务重跑验收命令。**结果不符 = 谎报**，记入信任账本。
+### 3. Numbers live in data, not in code
 
-### 第十条：信任账本
-- `board/trust-ledger.md` 记录每个 Bot 的谎报、越界、超时事件。
-- 累计 2 次谎报 → 该 Bot 的所有产出升级为双人复核。
-- 累计 4 次 → 停用该 Bot，由人类决定重建或重写其 description。
-- 这不是惩罚，这是**系统学习哪里需要更紧的闸门**。
+Damage values, prices, timings, drop rates: data files, validated against a schema. A
+number compiled into a source file cannot be tuned by the person who owns tuning, so it
+will be tuned by whoever owns the file, which is the wrong person.
+
+*Enforced by:* the build gate's hardcoded-constant check.
 
 ---
 
-## 第四章 · 关于沟通
+## Part two · Concurrency
 
-### 第十一条：绝不静默
-- 每个 Bot 每 2 小时更新一次 `board/heartbeat/<bot-code>.md`，哪怕内容是"仍在处理 T-042 第 3 步"。
-- 卡住超过 30 分钟没有进展，**立即**写进心跳的 `blocked` 字段并 @ 总督。装作在思考是最昂贵的行为。
+### 4. One writer per path
 
-### 第十二条：三振出局
-- 同一个问题，连续 3 次尝试失败，**必须停手**，写一份 `board/blockers/<task-id>.md`（描述：目标 / 已尝试的 3 种方法 / 各自的失败现象 / 你的猜测），然后升级。
-- 严禁第 4 次重复相似的尝试。
+Every path in the repository has exactly one owner, listed in the ownership table. Two
+agents editing one file concurrently do not merge; they overwrite, and the loser's work
+disappears without an error message.
 
-### 第十三条：安灯绳（Andon）
-- 任何 Bot 在发现以下情况时**必须**拉安灯绳（在 `board/andon.md` 追加一条并 @ 总督与闸门官）：
-  - main 分支坏了（CI 红）
-  - 两份规格互相矛盾
-  - 契约被违反
-  - 发现前面的工作建立在错误假设上
-- 安灯拉响后，全线**停止接新任务**，只允许处理安灯事项。总督负责关闭安灯。
-- **拉错安灯不受惩罚，不拉安灯才受惩罚。**
+*Enforced by:* the lane gate, which rejects out-of-lane changes without reading them.
 
-### 第十四条：向人类汇报的收敛
-- 每天只有一份给人类的东西：`board/daily-brief.md`，由总督生成。
-- 简报中"需要你决定的事项"**最多 3 条**，且必须按影响排序，每条给出推荐选项与理由。
-- 其他 Bot 不得直接向人类刷屏。有事找总督。
+### 5. One lane per agent
 
----
+Each agent works in its own worktree and its own branch. Never in someone else's
+directory, never on someone else's branch.
 
-## 第五章 · 关于品质
+*Enforced by:* the lane gate and branch naming.
 
-### 第十五条：手感是硬指标
-- 手感不是主观的。`docs/01-game/feel-spec.md` 把手感写成**帧数据契约**，由自动化测试断言。
-- 触感六件套（屏震 / 命中停顿 / 粒子 / 音效 / 跳字 / 受击闪白）对每个战斗动作都是**必需项**，缺一件即视为未完成。
+### 6. Small steps
 
-### 第十六条：品味归人类
-- 自动化闸门保证"不难看、不难用、不出错"；**它保证不了"好"**。
-- 每个里程碑设一次人类品味评审，用固定 rubric 打分（见 `@studio/docs/03-gates/gates.md`）。低于阈值的里程碑不放行，无论任务完成率是多少。
+At most 400 changed lines and 25 files of code per pull request. Documentation and board
+files are exempt.
 
-### 第十七条：垂直切片优先
-- 永远先做"薄而完整的一条链路"，再做"厚而残缺的一堆系统"。
-- 一个能玩三分钟的切片，优先级高于十个只能跑单测的系统。
+This is not a style preference. Past that size a reviewer stops reviewing and starts
+skimming, and the review gate silently becomes decorative while still reporting green.
 
-### 第十八条：删除的权力
-- 任何 Bot 都可以提议删除代码、内容或系统。删除提案与新增提案享有同等优先级。
-- 每个 sprint 的回顾必须回答："这个 sprint 我们可以删掉什么？"
+*Enforced by:* the envelope gate.
 
 ---
 
-## 第六章 · 关于演进
+## Part three · Acceptance
 
-### 第十九条：SOP 可被修改，且必须被修改
-- 本项目的流程文件（`docs/03-process/`、`docs/04-grokbot/skills/`）是**代码**，同样走 PR 和版本管理。
-- 每个 sprint 的回顾**必须**产出至少 1 条 SOP 变更 PR。一条都提不出来，说明回顾没做。
-- SOP 变更由总督起草，闸门官复核，人类批准。
+### 7. Nobody certifies their own work
 
-### 第二十条：优先改流程，而不是骂人
-- 出问题时，第一反应是"哪条 SOP 缺失或不清楚导致了这个结果"，而不是"哪个 Bot 不行"。
-- 只有在同一个 Bot 在 SOP 已明确的情况下反复出错时，才处理 Bot（第十条）。
+An agent may not approve, merge, or declare done anything it produced. Author and
+reviewer are different agents, named on the task card before the work starts.
+
+*Enforced by:* the envelope gate compares the two names.
+
+### 8. Done is a command, not an opinion
+
+Every task carries one acceptance command, written when the task is dispatched. It
+passes when it exits zero. "Mostly working" is not a state that exists.
+
+The command is fixed at dispatch precisely so it cannot be chosen afterwards to match
+whatever happens to pass.
+
+*Enforced by:* the envelope gate compares the evidence pack against the card's command.
+
+### 9. Claims need evidence
+
+"I ran it and it passed" is not evidence. An evidence pack is: the command, its full
+output ending in `EXIT_CODE=0`, the diff summary, and the environment.
+
+The gatekeeper re-runs a sample of finished tasks in a clean environment. Fabricated
+evidence is the one offence that ends an agent's participation, because a team that
+cannot trust its own reports has no way to work at all.
+
+*Enforced by:* the envelope gate, and by re-running samples.
 
 ---
 
-## 附：Bot 开工前的三句自检
+## Part four · Communication
 
-任何 Bot 在开始任何任务前，在自己的回复第一段回答这三句：
+### 10. Never go silent
 
-1. 我读了哪些文件？（列路径）
-2. 我这次允许改哪些路径？（列 glob，对照所有权表）
-3. 我的验收命令是什么？跑通它意味着什么？
+Progress is visible in commits. An agent that stops committing has stopped, whether or
+not it knows it. Silence is reported automatically and treated as a problem to solve,
+not a mood to respect.
 
-答不出任何一句 → 不要开工，退回总督。
+*Enforced by:* the stall check reads commit timestamps. Nothing to remember, nothing to
+forget, and it works precisely when a stuck agent cannot report being stuck.
+
+### 11. Three strikes, then stop
+
+Three failed attempts at the same problem is the limit. Then stop, write a blocker
+report, and escalate. There is no fourth attempt.
+
+This is not enforced by a gate, and it is the most important rule here. The single most
+expensive failure mode of a weak agent is looping: it keeps trying variations, keeps
+producing plausible progress reports, and burns a day going nowhere. The rule exists
+because the agent doing it cannot tell that it is doing it. Count out loud.
+
+### 12. Pull the andon cord
+
+Four situations require stopping the line immediately: the default branch is red, two
+specifications contradict each other, a frozen contract was violated, or work in flight
+rests on an assumption now known to be false.
+
+Pulling the cord when it turns out to be nothing costs an hour. Not pulling it costs
+everything built on top afterwards. **Pulling unnecessarily is never penalised. Failing
+to pull is.**
+
+---
+
+## Part five · Evolution
+
+### 13. Taste belongs to the human
+
+Whether the game is good is not a decision agents get to make, and no metric substitutes
+for it. Agents make things measurable; the human decides whether the measured thing is
+worth having. A milestone does not ship without the human having played it.
+
+### 14. Fix the process, not the person
+
+When something goes wrong, the question is which rule or gate allowed it, not who erred.
+An agent that repeats a mistake is evidence of a missing gate.
+
+And the converse, which matters more: **a process change requires a real incident.**
+Every framework change records the failure that caused it, with a date and a link. A
+framework that grows from imagination grows without limit, and each addition is a tax
+paid on every task forever.
+
+*Enforced by:* CI rejects changes to gates or SOPs whose PR does not cite a cause.
+
+---
+
+## Before you start, answer three questions
+
+Every agent, at the top of every reply that begins a work session:
+
+1. Which files did I read? (exact paths)
+2. Which paths am I allowed to change? (globs, from the ownership table)
+3. What is my acceptance command, and what does passing it prove?
+
+Cannot answer one of them? Then do not start. Ask.

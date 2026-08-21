@@ -1,116 +1,69 @@
-# 工作室成熟度路线图（S0–S3）
+# Studio roadmap
 
-> Owner: P0 总督 · 放行需人类批准
-> 这是**工作室自己的**里程碑，与任何一款游戏的 M0–M6 并行推进、互不替代。
->
-> 关系：游戏的里程碑衡量"这款游戏做到哪了"；工作室的阶段衡量"这个团队变成什么样了"。
-> 一款游戏做完 ≠ 工作室升级。**只有当能力沉淀下来、下一款真的更快，才算升级。**
+The studio's own maturity, separate from any game's milestones. A game can ship while the
+studio is still immature, and the studio can be mature while a game is failing — these are
+different axes and conflating them hides both problems.
 
 ---
 
-## S0 · 框架成型
+## S0 · The framework exists and works
 
-**目标**：制度存在、闸门有效、五人编制能跑通一条完整流水线。
+**Goal:** a small team can run one task end to end without a person carrying it.
 
-**此阶段不产出任何游戏内容。** 产出的是"生产游戏的能力"。
+Release criteria:
+- Every gate in `gates.md` is implemented, wired into CI, and has been **watched failing**.
+- One task went from dispatch to merge with no human intervention.
+- A new agent reached its first merged pull request in under two hours.
+- Every negative test in `setup.md` produces the expected red.
 
-### 放行条件
-- [ ] 一个平凡任务全程零人类介入走完 G1–G9，证据包完备
-- [ ] 四条负向验收全部被系统抓住：越界 / 谎报 / 停摆 / 文档矛盾
-- [ ] 分支保护生效且 `enforce_admins=true`（实测直推 main 被拒）
-- [ ] 连续 3 天日报自动生成，人类读完 ≤5 分钟
-- [ ] 5 个 Bot 全部完成入职并能正确复述自己的边界
-- [ ] 6 条必需 routine 配置完毕并 Test run 通过
-- [ ] 一台空白机器上一条命令重建环境成功
+The third one is the real test. A framework only its author can operate is a personal habit.
 
-> ⚠️ S0 是**唯一**允许凭想象立规矩的阶段（章程铁律二的例外）。
-> S0 一结束，本阶段立的每一条规矩都要在第一次回顾时复查：**它拦住过什么？拦不住就删。**
+## S1 · One game shipped
 
----
+**Goal:** the framework survived contact with a real project from beginning to release.
 
-## S1 · 交付第一款
+Release criteria:
+- A game shipped, with players.
+- The capability ledger has entries at "done once" or better across rendering, networking,
+  content pipeline, and release.
+- The retrospectives produced more deletions than additions.
 
-**目标**：用这套框架真的把一款游戏做出来。**框架的一切价值在此被证明或证伪。**
+That last criterion looks odd and is deliberate. A framework that only grew during its first
+real use never learned anything — it just accumulated.
 
-### 放行条件
-- [ ] 第一款游戏交付（其自身全部里程碑通过）
-- [ ] 首次通过率 ≥ 65%
-- [ ] 缺陷逃逸率 ≤ 15%
-- [ ] 人类介入 ≤ 15 次/周，且**趋势向下**
-- [ ] 新 Bot 上手时间 ≤ 1 天
-- [ ] 记录基线 X1（启动成本），供 S2 对照
-- [ ] 完成第一次**跨项目复盘**，能力账本非空
+## S2 · The second game proves the point
 
-### S1 期间最容易犯的错
+**Goal:** demonstrate that the studio is leverage rather than overhead.
 
-**为了赶游戏进度而绕过框架。** 这在每个项目里都会至少发生一次，通常发生在里程碑临近时。
+Release criteria:
+- Time to first playable under half the first game's.
+- Reuse ratio above 60%.
+- No process rule needed to be invented from scratch; the changes were adjustments.
+- The framework changes made during this project were driven by incidents, not by the new
+  game's shape.
 
-判断标准很简单：如果一条规矩在压力下第一次就被绕过，那它本来就不该存在——去删掉它，
-而不是留着它继续假装存在。**被违反且无人追究的规矩，比没有规矩更坏**，因为它教会所有人规矩是可选的。
+**This is the milestone the studio exists for.** Everything before it is a promise.
 
----
+## S3 · Self-sustaining
 
-## S2 · 第二款验证复利
+**Goal:** the team runs on its own, and the human's attention goes to taste rather than
+traffic control.
 
-**目标**：证明第一款的经验真的沉淀了下来，而不是留在某几次对话里。
-
-### 放行条件
-- [ ] **X1 启动成本 ≤ 第一款的 50%** ← 这是本阶段的核心，达不到则 S2 不放行
-- [ ] 首次通过率 ≥ 75%
-- [ ] 缺陷逃逸率 ≤ 8%
-- [ ] 人类介入 ≤ 8 次/周
-- [ ] 新 Bot 上手 ≤ 4 小时
-- [ ] 能力账本中至少 5 项被第二款实际复用
-- [ ] 框架已发过 ≥3 个版本，且每个版本的变更都能追溯到真实事故（章程铁律二）
-- [ ] 两个项目并行运行过至少一个月而没有互相破坏
-
-### 为什么"启动成本减半"是硬指标
-
-因为它是**唯一无法作弊的复利证明**。
-
-FPY、逃逸率这些都可以通过调整标准来影响。但"从立项到可玩要多少天"是一个赤裸的事实。
-如果第二款还是要花同样的时间，那说明第一款积累的全是这款游戏的专属知识，
-工作室层等于零。那样的话，我们就该承认这一点，并把工作室仓库删掉——
-维护一套没有产生复利的"框架"，只是在给自己增加成本。
+Release criteria:
+- Human touches under five per week, sustained for a month, with quality holding.
+- A new project can be started by following the playbook without asking questions.
+- The framework has been stable for two months, changing only from incidents.
 
 ---
 
-## S3 · 自持
+## The rule that outranks this page
 
-**目标**：工作室在人类极少介入的情况下持续运转。
+**Do not sacrifice a game for the studio's progress.**
 
-### 放行条件
-- [ ] 人类介入 ≤ 4 次/周，且**只剩品味评审与立项**
-- [ ] 框架的改进提案由 Bot 自己从事故中提出，人类只批准
-- [ ] 新项目启动可由 P0 独立完成（`@studio/playbooks/new-project.md` 走通且无需人类补位）
-- [ ] 连续两个季度没有出现过同类型的重复事故
-- [ ] 至少一次成功的**框架回滚**：某条规矩被证明有害并被干净地删除
+If a framework improvement would delay a game, the game wins. A studio with a perfect
+process and nothing shipped has proven nothing, and there is no evidence a process is good
+except games it helped finish.
 
-### 最后一条为什么是放行条件
-
-因为一个只会增加规矩、从来删不掉规矩的系统，注定会僵化到不可用。
-
-**能删掉自己的规矩，是这个系统成熟的最终标志。** 加规矩谁都会，
-承认某条规矩错了、并把依赖它的一切干净拆掉，需要的是完全不同层次的能力。
-
----
-
-## 当前状态
-
-| 阶段 | 状态 | 备注 |
-|---|---|---|
-| **S0** | 🔵 进行中 | 框架已就位，闸门已实测；待 5 个 Bot 上线跑通主验收与四条负向验收 |
-| S1 | ⬜ 未开始 | 第一款：《夕阳红俱乐部》 |
-| S2 | ⬜ 未开始 | 第二款未立项 |
-| S3 | ⬜ 未开始 | |
-
----
-
-## 一条提醒
-
-**不要为了推进工作室阶段而牺牲游戏。**
-
-工作室的能力只有在真实交付的压力下才长得出来。一个从没交付过游戏、
-但流程文档极其完善的"工作室"，是这套方法论最可笑的失败形态。
-
-章程第 1 条：**没有 A 的 B 是空谈。**
+The reverse is also bounded: a shortcut that saves a week and destroys reusability is only
+worth taking once, and it must be recorded in the ledger's negative list so the next project
+knows what it inherited.
