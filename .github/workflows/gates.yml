@@ -7,49 +7,89 @@ on:
     # Without these, a label added after opening is invisible to the run that judged
     # the pull request, and the only way to re-evaluate is an empty commit.
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  # An approval is a review body, and a review does not fire `pull_request`.
+  # Without this the approval gate could only ever be satisfied by pushing again
+  # after being approved, which is the one thing an approval is supposed to stop.
+  pull_request_review:
+    types: [submitted, edited]
   push:
     branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   lane:
     name: lane
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
+      # Every value that came from outside is an environment variable, never an
+      # expression inside the command. `lane/A1/T-001"||true;#` is a legal git ref,
+      # and interpolated into `run:` it made the step exit zero without checking
+      # anything — the gate reported success on the pull request that disabled it.
       - name: G2 lane
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-        run: node tools/gates/lane-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          node tools/gates/lane-check.mjs "$HEAD_REF" "origin/$BASE_REF"
 
   envelope:
     name: envelope
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
+      # Review and comment bodies go to a file, not an environment variable.
+      # They are the one input written by a human in free text, so they are the
+      # last input that should ever reach a shell.
+      - name: Collect approvals
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          {
+            gh api "repos/$REPO/pulls/$PR/reviews" --paginate --jq '.[].body'
+            gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[].body'
+          } > "$RUNNER_TEMP/approvals.txt"
+          echo "PR_APPROVALS_FILE=$RUNNER_TEMP/approvals.txt" >> "$GITHUB_ENV"
+
       - name: G3 envelope and evidence
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-        run: node tools/gates/envelope-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          node tools/gates/envelope-check.mjs "$HEAD_REF" "origin/$BASE_REF"
 
   docs:
     name: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -69,11 +109,12 @@ jobs:
   cause:
     name: cause
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
       # Constitution article 14. Without this the process grows from imagination,
       # and every addition is charged to every future task.
@@ -83,12 +124,15 @@ jobs:
       # a cause nobody will find in three months. It also kept the body out of a shell
       # command, which is where it was being interpolated.
       - name: G7 framework changes cite an incident
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          BASE="origin/${{ github.base_ref }}"
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          BASE="origin/$BASE_REF"
           CHANGED=$(git diff --name-only "$BASE...HEAD")
-          if echo "$CHANGED" | grep -qE '^docs/04-grokbot/skills/|^docs/03-gates/|^tools/gates/'; then
+          if echo "$CHANGED" | grep -qE '^(docs/00-charter/|docs/01-framework/|docs/03-gates/|docs/04-grokbot/|templates/|playbooks/|tools/)'; then
             if ! git diff -U0 "$BASE...HEAD" -- CHANGELOG.md | grep -q '^+.*★'; then
-              echo "::error::This PR changes a gate or an SOP and adds no cause to CHANGELOG.md."
+              echo "::error::This PR changes the framework and adds no cause to CHANGELOG.md."
               echo "Add an entry marked ★: which real failure prompted this? Date, task id, or incident link."
               exit 1
             fi
@@ -100,13 +144,33 @@ jobs:
     needs: [lane, envelope, docs, cause]
     if: always()
     steps:
+      # `skipped` is not `success`. Treating them the same meant a job that never
+      # ran counted as a job that passed, and a job that never runs is one `if:`
+      # away in a diff this gate is supposed to be judging.
       - name: Verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          LANE: ${{ needs.lane.result }}
+          ENVELOPE: ${{ needs.envelope.result }}
+          DOCS: ${{ needs.docs.result }}
+          CAUSE: ${{ needs.cause.result }}
         run: |
-          echo "lane=${{ needs.lane.result }} envelope=${{ needs.envelope.result }} docs=${{ needs.docs.result }} cause=${{ needs.cause.result }}"
-          for r in "${{ needs.lane.result }}" "${{ needs.envelope.result }}" "${{ needs.docs.result }}" "${{ needs.cause.result }}"; do
-            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
-              echo "::error::Not every gate is green. Do not merge, and do not merge as an administrator either."
-              exit 1
+          echo "event=$EVENT lane=$LANE envelope=$ENVELOPE docs=$DOCS cause=$CAUSE"
+          if [ "$EVENT" = "push" ]; then
+            REQUIRED="DOCS"
+          else
+            REQUIRED="LANE ENVELOPE DOCS CAUSE"
+          fi
+          BAD=0
+          for name in $REQUIRED; do
+            eval "value=\$$name"
+            if [ "$value" != "success" ]; then
+              echo "::error::Gate $name is '$value', not success."
+              BAD=1
             fi
           done
+          if [ "$BAD" != "0" ]; then
+            echo "::error::Not every gate is green. Do not merge, and do not merge as an administrator either."
+            exit 1
+          fi
           echo "All gates green."

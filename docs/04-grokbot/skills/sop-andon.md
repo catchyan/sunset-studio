@@ -14,8 +14,20 @@ the cord meaningful.
 
 ## 1. Pull it immediately
 
-Append to `board/andon.md`. That file is append-shared: add your entry, never touch anyone
-else's.
+Append to `board/andon.md` on a board branch, which needs no card, no evidence pack and no
+approval:
+
+```bash
+git switch -c board/<CODE>/andon-<date>
+# edit board/andon.md, then:
+git commit -m "chore(board): andon A-<date>-<n> <one line>"
+```
+
+That file is append-shared: add your entry, never touch anyone else's.
+
+The route is deliberately this light. Trigger one on the list is a red default branch, and a
+gate that demanded a green evidence pack before recording it would be asking for the one
+thing that certainly does not exist at that moment.
 
 ```markdown
 ## A-<date>-<n> · <one line>
@@ -35,6 +47,11 @@ Not all work everywhere — only what depends on the broken thing. The pull says
 those are, so people can tell whether it means them.
 
 Nothing merges to a red default branch, regardless of area.
+
+If the default branch is red **because CI itself is broken**, the repair cannot pass the
+gates it broke. That is what the `break-glass` label is for: it downgrades the envelope gate's
+failures to warnings, and only when the same diff writes the andon entry. See
+`docs/03-gates/gates.md`, "Break-glass". Q1 reviews the whole diff in full.
 
 ## 3. Whoever it belongs to responds
 

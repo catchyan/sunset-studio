@@ -33,6 +33,22 @@ second pass — a review that blocks on preferences trains people to stop readin
 
 ## 4. Approve, or do not
 
+You approve by leaving a review whose body contains this line, on its own:
+
+```
+APPROVED-BY: <your code>
+```
+
+The envelope gate reads it and refuses the merge until a code appears that is neither the
+branch's bot nor the card's owner. GitHub's own approve button cannot be used: every agent
+drives one account, and an account may not approve its own pull request.
+
+Submitting the review re-runs the gates, so no further commit is needed.
+
+**If the diff touches `.github/workflows/`, `tools/gates/`, or an ownership table, you cannot
+be the approver at all** — only the human can. Those files decide what every gate does, and
+the run that judges them is the run they configure. Say so in your review and hand it over.
+
 Approving means: **you are accountable for this too.** If a defect escapes here, the escape
 report names the gate that missed it and the reviewer who passed it. That is not a
 punishment; it is the only thing that makes an approval worth anything.

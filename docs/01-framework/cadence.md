@@ -11,7 +11,7 @@ schedule.
 | Time | Who | What | Output |
 |---|---|---|---|
 | 07:00 | O1 | Environment check: CI, disk, the shared machine, stale locks | Silent unless broken |
-| 08:30 | P0 | Dispatch: write cards for today's tasks, assign reviewers | New cards on the backlog |
+| 08:30 | P0 | Dispatch: write cards for today's tasks, assign reviewers | Cards **merged** to main |
 | every 3h | P0 | Stall check (`tools/board/stall.mjs`) | Silent unless a lane stopped |
 | 10:00 | Q1 | Re-run a sample of yesterday's finished work in a clean environment | Sample report |
 | 14:00 | S1 | Drift check: do any two documents now disagree? | `board/drift.md`, only on findings |
@@ -21,6 +21,10 @@ schedule.
 Two of these produce nothing on a good day, on purpose. A recurring report that says
 "all fine" every day stops being read within a week, and then stops being read on the day
 it says something else.
+
+Dispatch means merged, not written. A card lands on a `board/P0/<slug>` branch — no card of
+its own, no evidence pack — and the lane gate reads permissions from the base branch, so an
+unmerged card grants the assignee nothing.
 
 ### The nightly report
 
@@ -41,6 +45,11 @@ Friday?* Output is cards on the backlog, each with a named reviewer.
 
 Twenty-five messages maximum. A planning meeting that needs more than that is planning
 work nobody has specified yet, and the fix is to specify it, not to keep talking.
+
+**Monday 09:30 — O1 verifies branch protection** with `node tools/verify-protection.mjs`, in
+both repositories. Nothing inside a repository can check its own protection, and the failure
+this catches — a required check that never reports — presents as seven green gates and a grey
+merge button, which nobody diagnoses quickly.
 
 **Friday 16:00 — demo.** Something runs. A recording, a screenshot, a log. Not slides.
 

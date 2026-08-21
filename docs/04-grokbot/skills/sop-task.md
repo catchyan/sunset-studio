@@ -15,6 +15,10 @@ git fetch origin && git rebase origin/main
 Read the card at `board/tasks/T-XXX.md` and **every file it lists in section 2**. Not the
 titles — the files.
 
+If the card is not on `origin/main`, it has not been dispatched and it grants you nothing.
+Ask P0 to merge it first. The lane gate reads your permissions from the base branch, so
+starting early means being stopped at the first file you touch.
+
 ## 2. Answer the three questions, out loud, in your first message
 
 1. Which files did I read? (exact paths)
@@ -68,15 +72,18 @@ Keep the count explicitly.
 
 ## 8. Produce the evidence pack
 
-Run **exactly** the command in section 6 of the card. Capture all of it.
+Run **exactly** the command in section 6 of the card. Not fewer, not more. Capture all of it.
 
 ```
 evidence/T-XXX/
-  command.txt     the command, verbatim from section 6
-  output.txt      full output, last line EXIT_CODE=0
+  command.txt     the commands, verbatim from section 6 and nothing else
+  output.txt      full output; every EXIT_CODE line is 0, and the last line is EXIT_CODE=0
   diff-stat.txt   git diff --stat origin/main...HEAD
   env.txt         node/git versions, platform
 ```
+
+The gate compares `command.txt` against the card in both directions. An extra command is not
+extra diligence: its exit code lands in the same file and answers a question nobody asked.
 
 Do not trim the output. The gatekeeper re-runs a sample and compares; a trimmed log is
 indistinguishable from a hidden failure, and it will be treated as one.
@@ -88,6 +95,9 @@ If the command does not exit zero, you are not finished. There is no partial cre
 
 Title `<type>(<scope>): <subject> [T-XXX]`. Body: what changed, why, and what you verified.
 Request the reviewer named on the card — never yourself.
+
+They approve by commenting `APPROVED-BY: <their code>`; the gate will not let this merge
+until somebody who is neither you nor the card's owner has done so.
 
 ## 10. Done means merged
 

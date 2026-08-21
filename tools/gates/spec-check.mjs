@@ -15,10 +15,20 @@ import { existsSync, readFileSync } from 'node:fs';
 const GATES_MD =
   process.argv[2] ?? ['docs/03-gates/gates.md', 'docs/_studio/docs/03-gates/gates.md'].find(existsSync);
 const WORKFLOW = process.argv[3] ?? '.github/workflows/gates.yml';
-const REPO_KIND = existsSync('docs/00-charter/studio-charter.md') ? 'studio' : 'project';
+const REPO_KIND = existsSync('.studio-version') ? 'project' : 'studio';
 
 // Reporting jobs aggregate other gates; they are plumbing, not gates.
 const NOT_A_GATE = new Set(['summary']);
+
+/**
+ * The one job name branch protection is allowed to require.
+ *
+ * Protection matches job names, not workflow names, and the two are easy to
+ * confuse because both are called "gates" here. A protection rule pointing at
+ * the workflow name waits for a check that will never report: the pull request
+ * shows every gate green and the merge button stays grey forever.
+ */
+const REQUIRED_CHECK = 'summary';
 
 const problems = [];
 
@@ -88,7 +98,13 @@ function main() {
       continue;
     }
     if (g.blocking) {
-      const body = jobs[g.job];
+      // Comment lines are stripped first. They are prose, and prose about a
+      // failure mode reads exactly like the failure mode: the comment explaining
+      // why `|| true` is banned was itself reported as a `|| true`.
+      const body = jobs[g.job]
+        .split('\n')
+        .filter((l) => !/^\s*#/.test(l))
+        .join('\n');
       if (/continue-on-error:\s*true/.test(body)) {
         problems.push(`${g.id} is documented as blocking, but job "${g.job}" sets continue-on-error: true.`);
       }
@@ -106,6 +122,23 @@ function main() {
   for (const job of Object.keys(jobs)) {
     if (NOT_A_GATE.has(job) || documented.has(job)) continue;
     problems.push(`${WORKFLOW} runs job "${job}", which no row in ${GATES_MD} accounts for.`);
+  }
+
+  // The aggregate is the only thing branch protection watches, so it has to
+  // exist and it has to wait for every gate. A gate missing from `needs` is a
+  // gate whose failure the merge button never hears about.
+  if (!(REQUIRED_CHECK in jobs)) {
+    problems.push(
+      `${WORKFLOW} has no job named "${REQUIRED_CHECK}". That is the job branch protection requires;\n` +
+        '      without it every pull request waits for a check that never reports.'
+    );
+  } else {
+    const needs = jobs[REQUIRED_CHECK].match(/needs:\s*\[([^\]]*)\]/)?.[1] ?? '';
+    const waited = new Set(needs.split(',').map((s) => s.trim()).filter(Boolean));
+    for (const job of Object.keys(jobs)) {
+      if (NOT_A_GATE.has(job) || waited.has(job)) continue;
+      problems.push(`Job "${job}" is not in the needs list of "${REQUIRED_CHECK}", so its failure cannot block a merge.`);
+    }
   }
 
   console.log(`spec gate · ${REPO_KIND} repo · ${mine.length} documented gate(s) · ${Object.keys(jobs).length} CI job(s)`);

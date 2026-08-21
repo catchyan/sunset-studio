@@ -11,7 +11,8 @@
 | `board/tasks/**` | P0 | |
 | `board/blockers/<TASK>.md` | TASK-AUTHOR | |
 | `board/decisions/**` | P0 | |
-| `board/andon.md` | ANYONE | Append your own entry only |
+| `board/andon.md` | ANYONE | Append your own entry only. Merges with no card and no approval |
+| `board/blockers/**` | ANYONE | Fallback for the row above. A distress signal never waits |
 | `evidence/<TASK>/**` | TASK-AUTHOR | Expanded against the branch's task id |
 | `docs/00-charter/glossary.md` | S1 | Process vocabulary only |
 | `docs/01-framework/**` | P0 | |
@@ -27,10 +28,12 @@
 | `playbooks/**` | P0 | |
 | `templates/**` | P0 | |
 | `templates/tools/studio-sync.mjs` | Q1 | The mirror gate every project runs. More specific than the row above |
+| `templates/.github/workflows/**` | Q1 | Every project's CI starts as a copy of this |
 | `tools/gates/**` | Q1 | Changing a gate means changing its test in the same PR |
 | `tools/board/**` | P0 | |
 | `tools/lock.mjs` | O1 | |
-| `tools/mount.mjs` | O1 | |
+| `tools/mount.mjs` | O1 | Also read by the mirror gate, for the list of mountable paths |
+| `tools/verify-protection.mjs` | O1 | The only check that runs from outside the repository |
 | `AGENTS.md` | P0 | |
 | `README.md` | P0 | |
 | `OWNERSHIP.md` | A1 | Needs P0 to countersign |

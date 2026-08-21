@@ -23,26 +23,55 @@ the repository. Verify now.
 
 ## 2. Mount the framework
 
+A new project has no copy of the mount script, and cloning the whole studio to run one file
+is how the first project ended up hand-writing its own CI. Fetch it at the tag you are
+mounting, so the mount logic and the framework it mounts are the same release:
+
 ```bash
-node tools/mount.mjs --version vX.Y.Z
+V=vX.Y.Z
+curl -fsSL "https://raw.githubusercontent.com/<owner>/sunset-studio/$V/tools/mount.mjs" -o mount.mjs
+node mount.mjs --version "$V" && rm mount.mjs
 ```
 
-Creates `.studio-version` and `docs/_studio/`, and adds the `-text` rule to
-`.gitattributes`. Commit all three together.
+Creates `.studio-version` and `docs/_studio/`, installs `tools/studio-sync.mjs` and
+`.github/workflows/gates.yml`, and adds the `-text` rule to `.gitattributes`. Commit them
+together, then:
+
+```bash
+node tools/studio-sync.mjs --remote
+```
 
 ## 3. Branch protection
 
+**The required check is the job name `summary`, never the workflow name `gates`.** GitHub
+matches job names. A rule naming the workflow waits for a check that never reports: the pull
+request shows every gate green and the merge button stays grey. That cost this studio's first
+project a day, and the symptom points nowhere near the cause.
+
 ```bash
-gh api -X PUT repos/<owner>/<project>/branches/main/protection \
-  -f 'required_status_checks[strict]=true' \
-  -f 'required_status_checks[contexts][]=summary' \
-  -f 'enforce_admins=true' \
-  -f 'required_pull_request_reviews[required_approving_review_count]=1' \
-  -F 'restrictions=null'
+cat > /tmp/protection.json <<'JSON'
+{
+  "required_status_checks": { "strict": true, "contexts": ["summary"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+JSON
+gh api -X PUT repos/<owner>/<project>/branches/main/protection --input /tmp/protection.json
+node tools/verify-protection.mjs
 ```
 
 `enforce_admins` must be true. A gate the owner can walk past is a gate that will be walked
 past on the first bad afternoon, and after the first time it stops being a gate at all.
+
+`required_pull_request_reviews` is **null**, and that is not a relaxation. Every agent drives
+one GitHub account, and GitHub will not let an account approve its own pull request, so a
+required review here blocks every merge in the repository forever. Peer review is enforced by
+the envelope gate instead: the reviewer comments `APPROVED-BY: <code>` and the gate refuses
+any approval from the author. Give each role its own account and this becomes a real
+signature; nothing else changes.
 
 Status check names must be ASCII. Non-ASCII job names do not reliably match the contexts
 GitHub records, and the protection silently requires a check that never appears.
@@ -96,8 +125,9 @@ agents editing the same file impossible rather than merely forbidden.
 
 ## 9. Prove it works
 
-**Positive:** dispatch one trivial task and take it through `/sop-task` to merge. Every gate
-green, no override, evidence pack present.
+**Positive:** dispatch one trivial task on a `board/P0/<slug>` branch, merge the card, then
+take it through `/sop-task` to merge. Every gate green, no override, evidence pack present,
+one `APPROVED-BY` from someone who is not the author.
 
 **Negative — the part people skip.** A gate nobody has watched fail is a gate nobody knows
 works:
@@ -106,15 +136,29 @@ works:
 |---|---|
 | Change one byte in a mirror file | G1 red |
 | Change a mirror file *and* `.studio-version` | G2 allows it; G1 judges the content |
+| Delete a file from `MANIFEST.json` and from the mirror | G1 red — the file set is compared upstream |
 | Have a bot edit a path it does not own | G2 red |
+| `git mv` a file out of another role's directory into yours | G2 red on the source path |
+| Add the path to the ownership table on your own branch and then use it | G2 red — the table is read from base |
+| Start work before the card is merged | G3 red |
+| List a path in section 3 outside the fence and use it | G2 red |
 | Push a branch named without a task id | G3 red |
 | Commit without `[T-XXX]` in the subject | G3 red |
 | Put a different command in `command.txt` than the card asks for | G3 red |
+| Add a fifth command to `command.txt` that the card does not ask for | G3 red |
+| Leave a non-zero `EXIT_CODE` line in the middle of `output.txt` | G3 red |
+| Merge with no `APPROVED-BY` comment, or one naming yourself | G3 red |
+| Change `tools/gates/` without `APPROVED-BY: human` | G3 red |
+| Name a branch `lane/A1/T-001"\|\|true;#` | G2 and G3 still judge it |
+| Rename the `summary` job | G4 red |
 | Add an unreferenced link to a document | G4 red |
 | Document a gate in `gates.md` that no CI job implements | G4 red |
 
-Eight negative tests. If any of them passes, that gate is decorative — fix it before the
+Nineteen negative tests. If any of them passes, that gate is decorative — fix it before the
 first real task, because after that it is protecting work you have already come to rely on.
+
+Record the result of each in `evidence/T-000/`. "We tried them" is not evidence; the outputs
+are. The first project wrote this table and then merged without running the second half.
 
 ## 10. Record what happened
 

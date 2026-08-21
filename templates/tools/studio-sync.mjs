@@ -24,7 +24,7 @@
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -125,7 +125,7 @@ function checkLocal() {
   return manifest;
 }
 
-function checkRemote(manifest) {
+async function checkRemote(manifest) {
   const tmp = mkdtempSync(join(tmpdir(), 'studio-verify-'));
   try {
     // The same clone options the mount used, so both sides hash identical bytes. Without
@@ -147,6 +147,25 @@ function checkRemote(manifest) {
         problems.push(`${file}: the manifest hash does not match ${manifest.version} upstream — forged manifest.`);
       }
     }
+
+    // Walking the manifest can only ever find files that are in it. A manifest that
+    // omits a gate file describes a mirror missing that gate, and every hash in it
+    // still checks out. The upstream mount rules are the only list of what should
+    // have been there, so they are read from the clone rather than from anything
+    // the project could have written.
+    const mountPath = join(tmp, 'tools', 'mount.mjs');
+    if (existsSync(mountPath)) {
+      const { mountableFiles } = await import(pathToFileURL(mountPath).href);
+      const listed = new Set(Object.keys(manifest.files));
+      const absent = mountableFiles(tmp).filter((f) => !listed.has(f));
+      if (absent.length) {
+        problems.push(
+          `${absent.length} file(s) in ${manifest.version} upstream are absent from the manifest, ` +
+            'so the mirror is incomplete and the gate would never have said so:\n' +
+            absent.slice(0, 10).map((f) => `      ${f}`).join('\n')
+        );
+      }
+    }
   } catch (err) {
     problems.push(`Could not verify against upstream: ${err.message.split('\n')[0]}`);
   } finally {
@@ -154,7 +173,7 @@ function checkRemote(manifest) {
   }
 }
 
-function main() {
+async function main() {
   if (!existsSync(MANIFEST)) {
     console.error(`FAIL: ${SHOW}/MANIFEST.json not found. Has the framework been mounted?`);
     return 1;
@@ -164,7 +183,7 @@ function main() {
   checkSelf();
   const manifest = checkLocal();
   const remote = process.argv.includes('--remote');
-  if (remote) checkRemote(manifest);
+  if (remote) await checkRemote(manifest);
 
   console.log(
     `mirror gate · ${manifest.version} · ${Object.keys(manifest.files).length} file(s)` +
@@ -185,4 +204,4 @@ cut a release, then re-mount here and move ${PIN} in the same diff.
   return 1;
 }
 
-process.exit(main());
+process.exit(await main());

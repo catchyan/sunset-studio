@@ -1,0 +1,258 @@
+name: gates
+
+# Installed by tools/mount.mjs on the first mount, then owned by O1 and never
+# overwritten again. Add project jobs here; keep them in the `needs` list of
+# `summary`, which is the one check branch protection watches.
+#
+# Branch protection must require the JOB name `summary`, not the workflow name
+# `gates`. Verify it from outside with: node docs/_studio/tools/verify-protection.mjs
+
+on:
+  pull_request:
+    branches: [main]
+    # Labels are half of every exception, so applying one has to re-run the gates.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  # An approval is a review body, and a review does not fire `pull_request`.
+  pull_request_review:
+    types: [submitted, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # G1. First, because every other gate runs code from the mirror. If the mirror is
+  # not what it claims to be, no later verdict means anything.
+  mirror:
+    name: mirror
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: G1 framework mirror
+        run: node tools/studio-sync.mjs --remote
+
+  lane:
+    name: lane
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Every value that came from outside is an environment variable, never an
+      # expression inside the command. A branch name is a legal place to put shell
+      # metacharacters, and interpolated into `run:` it can make the gate exit zero
+      # without checking anything.
+      - name: G2 lane
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          node docs/_studio/tools/gates/lane-check.mjs "$HEAD_REF" "origin/$BASE_REF"
+
+  envelope:
+    name: envelope
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Collect approvals
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          {
+            gh api "repos/$REPO/pulls/$PR/reviews" --paginate --jq '.[].body'
+            gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[].body'
+          } > "$RUNNER_TEMP/approvals.txt"
+          echo "PR_APPROVALS_FILE=$RUNNER_TEMP/approvals.txt" >> "$GITHUB_ENV"
+
+      - name: G3 envelope and evidence
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          node docs/_studio/tools/gates/envelope-check.mjs "$HEAD_REF" "origin/$BASE_REF"
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: G4 gate engine tests
+        run: node docs/_studio/tools/gates/gates.test.mjs
+
+      - name: G4 ownership table
+        run: node tools/gates/ownership.test.mjs
+
+      - name: G4 selfcheck
+        run: node docs/_studio/tools/gates/selfcheck.mjs
+
+      - name: G4 gate list matches this workflow
+        run: node docs/_studio/tools/gates/spec-check.mjs
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Steps are skipped by a condition while the workspace does not exist yet,
+      # never by a command that cannot fail. A gate is either running or absent;
+      # "present but harmless" is the state that misleads everyone.
+      - name: Is there a workspace yet
+        id: ws
+        run: |
+          if [ -f pnpm-workspace.yaml ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.ws.outputs.ready == 'true'
+        with:
+          version: 9
+      - name: Install
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Named before they are run. The commit that creates the workspace turns on
+      # every step below at once, and a missing script fails with npm's "command
+      # not found" rather than with the name of the thing that is missing.
+      - name: The scripts these gates need
+        if: steps.ws.outputs.ready == 'true'
+        run: |
+          MISSING=""
+          for s in typecheck lint test gates:deps test:replay test:frames test:latency art-lint; do
+            node -e "process.exit(require('./package.json').scripts?.['$s'] ? 0 : 1)" || MISSING="$MISSING $s"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::package.json is missing the scripts these gates run:$MISSING"
+            echo "The list is in docs/02-tech/architecture.md. Add them, even as a stub that exits 0,"
+            echo "before the commit that creates pnpm-workspace.yaml."
+            exit 1
+          fi
+
+      - name: G5 types
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm typecheck
+      - name: G5 lint
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm lint
+      - name: G5 tests
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm test
+      - name: G5 dependency direction and simulation purity
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm gates:deps
+      - name: G5 replay determinism
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm test:replay
+
+  feel:
+    name: feel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Is there anything to measure yet
+        id: ws
+        run: |
+          if [ -f pnpm-workspace.yaml ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.ws.outputs.ready == 'true'
+        with:
+          version: 9
+      - name: Install
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Blocking. The previous version ended these commands with a shell fallback,
+      # so a latency regression could merge while the badge stayed green. A ten
+      # millisecond regression is invisible in review and obvious in play.
+      - name: G6 frame data
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm test:frames
+      - name: G6 input latency
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm test:latency
+      - name: G6 art lint
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm art-lint
+
+  summary:
+    name: summary
+    runs-on: ubuntu-latest
+    needs: [mirror, lane, envelope, docs, build, feel]
+    if: always()
+    steps:
+      # `skipped` is not `success`. Treating them the same meant a job that never
+      # ran counted as a job that passed, and a job that never runs is one `if:`
+      # away in a diff this gate is supposed to be judging.
+      - name: Verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          MIRROR: ${{ needs.mirror.result }}
+          LANE: ${{ needs.lane.result }}
+          ENVELOPE: ${{ needs.envelope.result }}
+          DOCS: ${{ needs.docs.result }}
+          BUILD: ${{ needs.build.result }}
+          FEEL: ${{ needs.feel.result }}
+        run: |
+          echo "event=$EVENT mirror=$MIRROR lane=$LANE envelope=$ENVELOPE docs=$DOCS build=$BUILD feel=$FEEL"
+          if [ "$EVENT" = "push" ]; then
+            REQUIRED="MIRROR DOCS BUILD FEEL"
+          else
+            REQUIRED="MIRROR LANE ENVELOPE DOCS BUILD FEEL"
+          fi
+          BAD=0
+          for name in $REQUIRED; do
+            eval "value=\$$name"
+            if [ "$value" != "success" ]; then
+              echo "::error::Gate $name is '$value', not success."
+              BAD=1
+            fi
+          done
+          if [ "$BAD" != "0" ]; then
+            echo "::error::Not every gate is green. Do not merge, and do not merge as an administrator either."
+            exit 1
+          fi
+          echo "All gates green."

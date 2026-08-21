@@ -27,9 +27,15 @@ the workflow file.
 | G5 | Build, types, tests | project | `build` | yes |
 | G6 | Feel and art | project | `feel` | yes |
 | G7 | Cause for framework change | studio | `cause` | yes |
-| R1 | Peer review | both | a different agent | yes |
+| R1 | Peer review | both | `envelope` | yes |
 | H1 | Daily human decisions | both | the human | no |
 | H2 | Milestone taste review | project | the human | yes |
+
+Branch protection requires exactly one check, and it is the **job** named `summary`, never
+the workflow named `gates`. GitHub matches job names. A rule naming the workflow waits for a
+check that never reports: every gate shows green and the merge button stays grey. That cost
+a day in this studio's first project. `tools/verify-protection.mjs` checks it from outside,
+which is the only place it can be checked from.
 
 ---
 
@@ -53,6 +59,12 @@ project from `templates/tools/studio-sync.mjs` and the gate compares itself agai
 template on every run. That does not make weakening it impossible — nothing project-side can
 — but it turns a quiet edit into a visible one.
 
+The last layer compares the *set* of files, not just their contents. Walking the manifest can
+only ever find files that are in it, so a manifest that omits a gate describes a mirror
+missing that gate and every hash in it still checks out. The list of what should have been
+mounted is read from `tools/mount.mjs` inside the freshly cloned tag, never from anything the
+project could have written.
+
 ## G2 · Lane
 
 `tools/gates/lane-check.mjs` reads the ownership table and rejects any changed path the
@@ -63,9 +75,30 @@ Special owners: `HUMAN`, `FRAMEWORK` (mirror; changes only alongside `.studio-ve
 `ANYONE` (append-shared files), `SELF` (only the file named after you), `TASK-AUTHOR` (a
 `<TASK>` glob, expanded to this branch's task id).
 
-Two exceptions, each needing two independent acts: the path listed in section 3 of the task
-card, plus a label. `lane-override` for another role's paths, `human-change` for `HUMAN`
-paths. One act alone does nothing, because one act is something an agent can do to itself.
+**Permissions are read from the base branch, never from the branch under review.** The table
+on your own branch is a table you can edit in the commit that uses it, which made the lane
+gate a note the author wrote to themselves. The one exception is a file that does not exist
+on base yet: a new path is matched against the table on the branch, because adding its row is
+itself a change to the table, and the table has an owner, so this gate has already judged it.
+
+**Which table governs is decided by the kind of repository, not by which file exists.** A
+project reads `docs/03-process/ownership.md`; the studio reads `OWNERSHIP.md`. Trying
+candidates in order meant anyone who could write one path in a project could create a root
+`OWNERSHIP.md` and become the owner of everything in it.
+
+**Renames are two events.** `git diff --name-only` reports only where a file landed, so
+`git mv` out of somebody else's directory looked like a plain addition in yours. The gate
+diffs with `-M` and checks the source path against its owner and the destination against
+yours.
+
+Two exceptions, each needing two independent acts: the path listed in the fenced block of
+section 3 of the task card **as merged on the base branch**, plus a label. `lane-override`
+for another role's paths, `human-change` for `HUMAN` paths. One act alone does nothing,
+because one act is something an agent can do to itself.
+
+Granted paths come from the fence and nowhere else. Scanning the section for backticks read
+the prohibitions too, so a card that said "do not touch `packages/sim/**`" granted exactly
+that path.
 
 `HUMAN` paths need a route at all because the constitution has to be amendable, and every
 change here goes through a pull request. Without one, amending it would require an
@@ -82,24 +115,62 @@ sampling it.
 `tools/gates/envelope-check.mjs`:
 
 - the branch is `lane/<CODE>/T-XXX`;
-- that card exists, has all eight sections, and appears on `board/backlog.md`;
+- that card was **already on the base branch** before the work started, has all eight
+  sections with a fenced block in section 3, and appears on `board/backlog.md`;
 - owner and reviewer are named, and are different;
+- somebody other than the author has approved it (R1, below);
 - every commit subject matches `<type>(<scope>): <subject> [T-XXX]` with the branch's id;
-- the evidence pack exists, its output ends in `EXIT_CODE=0`, and its `command.txt`
-  contains the acceptance command from section 6 of the card;
+- the evidence pack exists, **every** `EXIT_CODE` line in it is zero, and its `command.txt`
+  is exactly the acceptance command from section 6 of the card — no more, no less;
 - code changes stay under 400 lines and 25 files.
 
 The command comparison is the point of the whole gate. Without it an agent can run whatever
-passes and paste that instead, and every other check here would still be green.
+passes and paste that instead, and every other check here would still be green. It compares
+both ways: a pack that adds commands the card never asked for is a pack whose exit codes are
+about a different question. And it counts every exit code, not the last one — a pack ending
+`EXIT_CODE=1, EXIT_CODE=1, EXIT_CODE=0` used to pass on the strength of its final line, which
+is exactly the pack you would write if you were hiding the first two.
 
-Deletions are judged against the ownership table as it stood on the base branch. Removing a
-file and its ownership row in one commit is the normal shape of a refactor, and reading only
-the new table calls that "unowned" — a false positive that fires on every cleanup.
+Requiring the card on the base branch is what makes dispatch mean anything. The lane, the
+definition of done and the acceptance command are the terms you will be judged against, and a
+card on your own branch lets you write your own terms in the same commit that meets them.
 
 Some changes genuinely cannot be split: a bootstrap, a mechanical rename, a vendored import.
 Removing the size limit for those would remove it for everything, so the exception raises the
 price instead — `- Size exception: <reason>` on the card, the `large-change` label on the pull
 request, and a full review rather than a sampled one.
+
+### Board branches
+
+`board/<CODE>/<slug>` is for changes that record something rather than build it: dispatching
+a card, pulling the andon cord, filing a blocker, logging a playtest. They carry no card and
+no evidence pack, and their commits read `chore(board): <subject>`. They may change nothing
+outside `board/`.
+
+This exists because the alternative was a deadlock in three places. Every pull request needed
+a dispatched card, so the first card could never be merged; the andon cord's first trigger is
+a red default branch, so recording that the line had stopped required the line to be running;
+and the scheduled routines produce artefacts that are nobody's task.
+
+`board/andon.md` and `board/blockers/**` merge without an approval. Everything else on a
+board branch still needs one. A distress signal that waits for a reviewer is not one.
+
+### Break-glass
+
+If CI itself is broken, the repository cannot be repaired through a pull request, because
+repairing it requires passing the gates it broke. The `break-glass` label turns the blocking
+failures of G2 and G3 into warnings — but only if the same diff also writes to
+`board/andon.md`. Pulling the cord and recording that you pulled it are one act.
+
+G2 is covered as well as G3 because a card grants paths and a card is read from the base
+branch, so a repair to the dispatch mechanism itself can never grant itself anything.
+
+**One failure survives break-glass: the human's approval of a diff that changes the gates.**
+Break-glass exists so a broken repository can be repaired. A repair that also removes the
+last reviewer standing outside the loop is not a repair.
+
+The downgraded failures are printed in full in the log, and the gatekeeper reviews the whole
+diff and files the follow-up task before the andon entry may be closed.
 
 ## G4 · Documents and specification
 
@@ -147,8 +218,44 @@ brake that has ever worked.
 A different agent, after CI is green. The reviewer checks intent against the card, not
 syntax — the machines already did syntax.
 
+The reviewer records it by commenting a line, on its own, reading:
+
+```
+APPROVED-BY: Q1
+```
+
+The envelope gate collects every review and comment body on the pull request and requires at
+least one code that is neither the branch's bot nor the card's owner. A review submitted after
+the last push re-runs the gates, so the approval lands without another commit.
+
+**This is auditable, not authenticated.** Every agent drives one GitHub account, so GitHub's
+own review approval can never be satisfied — an account cannot approve its own pull request —
+and its identity would prove nothing if it could. A written line in the timeline is weaker
+than a signature and stronger than what it replaced, which was a field the author filled in on
+their own card. Giving each role its own account is the upgrade path, and it changes nothing
+above this line.
+
 Approving without reading is the failure this gate is exposed to, which is why G3 caps diff
 size: past a few hundred lines, review becomes skimming regardless of who is doing it.
+
+## What the gates cannot check
+
+On a same-repository pull request, GitHub runs the workflow **from the branch under review**.
+A diff that edits the workflow or the gate scripts is therefore judged by the versions it
+contains. No amount of checking inside the repository closes that loop; the repository is
+checking its own checker.
+
+Three things hold instead, and they are worth knowing precisely because they are the weak
+point:
+
+- Branch protection requires the `summary` job. A diff that removes it never reports a check
+  and can never merge, whatever else it does.
+- The envelope gate refuses any diff touching `.github/workflows/`, `tools/gates/`, or an
+  ownership table unless the human has commented `APPROVED-BY: human`. A compromised gate
+  could skip this check — which is the point: the human is the reviewer *outside* the loop,
+  and the rule tells them which diffs they must not wave through.
+- `tools/verify-protection.mjs` reads the live protection from outside the repository, on the
+  weekly ops routine.
 
 ## H1 · Daily human decisions
 
@@ -158,7 +265,18 @@ the right thing.
 ## H2 · Milestone taste review
 
 The human plays the milestone, unassisted, for at least twenty minutes, on the target
-hardware, and answers three written questions.
+hardware, and writes the answers into `board/playtests/<date>-H2.md`.
+
+Four questions, the same four every time, so that answers can be compared across milestones:
+
+1. What did you do in the first sixty seconds, and was it the thing the milestone is about?
+2. Where did you stop paying attention? Give the minute.
+3. What did you expect to happen that did not?
+4. Would you play it again tomorrow without being asked? Yes or no, then one sentence.
+
+A "no" to question 4 blocks the milestone. Nothing else here blocks by itself; the answers go
+to P0, who decides what becomes a task. The verdict is recorded even when it is favourable,
+because a milestone with no H2 file is a milestone nobody played.
 
 No metric substitutes for this and none ever will. A milestone that no person has played is
 not finished, however green the board is.
