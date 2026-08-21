@@ -42,9 +42,16 @@ Two layers, because one catches only the careless case. Local hashing catches an
 mirror file; only re-cloning catches an edited mirror file whose manifest entry was updated
 to match.
 
-The mirror is committed with `-text` in `.gitattributes`. Without that, Windows line-ending
-translation changes the bytes and the gate reports tampering — accusing a person when the
-cause was a checkout setting.
+The mirror is committed with `-text` in `.gitattributes`, and the gate asks git whether that
+rule is actually in effect. Without the rule, line-ending translation changes the bytes and
+the gate reports tampering — accusing a person when the cause was a checkout setting. Asking
+git rather than reading the file matters because `.gitattributes` resolves by *last* match: a
+broad `* text=auto` line placed below the mirror's rule silently cancels it.
+
+The gate itself cannot live inside the mirror it verifies, so `mount.mjs` writes it into the
+project from `templates/tools/studio-sync.mjs` and the gate compares itself against that
+template on every run. That does not make weakening it impossible — nothing project-side can
+— but it turns a quiet edit into a visible one.
 
 ## G2 · Lane
 

@@ -3,9 +3,9 @@
 > Status: FROZEN. Owner: the human. No bot may change this file.
 > Changing it requires an ADR, the human's approval, and a major version of the framework.
 
-Twelve articles. Every one of them is here because ignoring it produces a specific,
-observed failure — not because it sounds professional. Most are enforced by a gate;
-the ones that are not say so, and say why they survive anyway.
+Article 0, then fourteen numbered articles. Every one of them is here because ignoring it
+produces a specific, observed failure — not because it sounds professional. Most are
+enforced by a gate; the ones that are not say so, and say why they survive anyway.
 
 ---
 

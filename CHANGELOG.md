@@ -8,6 +8,67 @@ bound.
 
 ---
 
+## v2.0.1 — 2026-08-21
+
+Patch. No rule changed; the mount produced a mirror the mirror gate rejected.
+
+### The mount wrote a file it did not hash
+
+★ Cause: the first project to mount v2.0.0 failed G1 immediately with
+`docs/_studio/README.md is not in the manifest`. `tools/mount.mjs` wrote the mirror's
+read-me *after* computing the manifest, so the file existed on disk and in no hash. The
+gate is right to reject that — a file nobody hashed is a file anybody can change — but no
+project could have mounted v2.0.0 at all.
+
+- `tools/mount.mjs` writes the read-me before walking the tree, so it is hashed with
+  everything else. `studio-sync.mjs` already skipped it in the upstream comparison, which is
+  where the intent was visible: the file was always meant to be in the manifest.
+
+This is the case for the eight negative tests in `docs/04-grokbot/setup.md` step 9. The
+release passed every gate in the studio repo, because the studio repo has no mirror to mount.
+A gate nobody has watched fail is a gate nobody knows works, and a tool nobody has watched
+succeed end to end is the same thing.
+
+### The mirror gate is shipped, not rewritten per project
+
+★ Cause: same mount. `tools/studio-sync.mjs` lives in the project, because it cannot verify
+a mirror it lives inside — and nothing shipped it, so the playbook effectively asked each
+project to write the framework's most important gate from a paragraph of description. The
+first hand-written copy had the local hash check and not the upstream comparison, which is
+the half that catches a forged manifest.
+
+- Added `templates/tools/studio-sync.mjs`, the canonical implementation.
+- `mount.mjs` writes it into the project.
+- It compares itself against the mirrored template on every run. A project-side gate can
+  always be weakened; this makes weakening it appear in the diff as a gate being disarmed.
+
+### The mirror's line-ending exemption is verified, not assumed
+
+★ Cause: found while mounting. `.gitattributes` resolves by last match, so adding a
+repository-wide `* text=auto eol=lf` line *above* `docs/_studio/** -text` cancelled it
+without any warning. The symptom is every mirror file reporting as modified on one machine
+and none on another, which reads as tampering.
+
+- `studio-sync.mjs` now runs `git check-attr text` on the mirror and fails if the answer is
+  not `unset`. Reading `.gitattributes` directly would not have caught it: only git accounts
+  for ordering, nested files, and global configuration.
+
+### This repository stores LF
+
+★ Cause: the same investigation. The studio had no `.gitattributes`, so a Windows checkout
+produced CRLF working files. Nothing was broken — the mount clones with `core.eol=lf`, which
+is why this never surfaced — but the correctness of every project's mirror rested on one flag
+in one script rather than on what the repository says about itself. Renormalising changed no
+stored bytes, so v2.0.0's hashes are unaffected.
+
+### Editorial
+
+- The constitution said "twelve articles" and had fifteen. No rule changed; the count was
+  wrong from the first draft, which is a small thing that costs credibility in a document
+  whose whole claim is that it is precise.
+
+---
+
 ## v2.0.0 — 2026-08-21
 
 Breaking. Rewritten in English, cut down, and re-founded on state derived from git rather
