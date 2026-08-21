@@ -52,7 +52,12 @@ function main() {
   const tmp = mkdtempSync(join(tmpdir(), 'studio-'));
   try {
     console.log(`拉取 ${STUDIO_REPO} @ ${version} ...`);
-    execSync(`git clone --depth 1 --branch ${version} ${STUDIO_REPO} "${tmp}"`, { stdio: 'pipe' });
+    // 强制 LF。镜像的哈希必须与平台无关：在 Windows 上挂载、在 Linux 的 CI 上校验，
+    // 两边算出来的必须是同一个值。autocrlf 会让这件事悄无声息地失败。
+    execSync(
+      `git -c core.autocrlf=false -c core.eol=lf clone --depth 1 --branch ${version} ${STUDIO_REPO} "${tmp}"`,
+      { stdio: 'pipe' }
+    );
 
     const resolved = execSync('git rev-parse HEAD', { cwd: tmp, encoding: 'utf8' }).trim();
 
@@ -80,6 +85,16 @@ function main() {
 
     writeFileSync(join(MIRROR, 'MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
     writeFileSync('.studio-version', version + '\n');
+
+    // 没有这一条，git 会在 Windows 上把镜像转成 CRLF、提交时转回 LF，
+    // 于是 CI 在 Linux 上校验的内容和本地生成清单时的内容不是同一份字节。
+    const GA = '.gitattributes';
+    const rule = 'docs/_studio/** -text';
+    const ga = existsSync(GA) ? readFileSync(GA, 'utf8') : '';
+    if (!ga.includes(rule)) {
+      writeFileSync(GA, `${ga}${ga && !ga.endsWith('\n') ? '\n' : ''}# 制度镜像逐字节校验，任何行尾转换都会让 G0 闸门失效\n${rule}\n`);
+      console.log(`   ${GA} -> 已加入 "${rule}"`);
+    }
     writeFileSync(
       join(MIRROR, 'README.md'),
       [
