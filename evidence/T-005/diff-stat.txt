@@ -1,0 +1,7 @@
+ CHANGELOG.md                          | 32 +++++++++++++++++++++++++
+ docs/02-roles/O1.md                   |  2 +-
+ docs/04-grokbot/setup.md              | 27 ++++++++++++++++-----
+ templates/.github/workflows/gates.yml |  2 +-
+ tools/gates/gates.test.mjs            | 12 ++++++++++
+ tools/mount.mjs                       | 45 ++++++++++++++++++++++++++++++++++-
+ 6 files changed, 111 insertions(+), 9 deletions(-)

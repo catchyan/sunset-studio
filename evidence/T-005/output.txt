@@ -1,0 +1,25 @@
+$ node tools/gates/gates.test.mjs
+glob matching
+specificity
+task token
+branch parsing
+section extraction
+fenced grants
+diff parsing
+self-governing paths
+table parsing
+launchers
+this repo's ownership table
+
+OK: gate engine behaves as specified.
+EXIT_CODE=0
+
+$ node tools/gates/selfcheck.mjs
+selfcheck: 53 markdown file(s) (studio mode: iron law one enforced)
+OK: no problems.
+EXIT_CODE=0
+
+$ node tools/gates/spec-check.mjs
+spec gate · studio repo · 6 documented gate(s) · 5 CI job(s)
+OK: the gate list matches the workflow.
+EXIT_CODE=0

@@ -8,6 +8,38 @@ bound.
 
 ---
 
+## v3.1.0 — 2026-08-21
+
+Minor: the mount produces four more files. Every command printed in an SOP, a routine or a
+role card now runs in a project, which until now half of them did not.
+
+### Every command the SOPs print was wrong in a project
+
+★ Cause: a readiness audit of `sunset-club`, 2026-08-21, before any agent was created. `/sop-lock`
+says `node tools/lock.mjs`. In the studio that path is the implementation. In a project the
+implementation is at `docs/_studio/tools/lock.mjs`, because it arrives inside the mirror — and
+the mirror is compared byte for byte against the upstream tag, so the path cannot be rewritten
+on the way in. The same held for `tools/board/status.mjs`, `tools/board/stall.mjs` and
+`tools/verify-protection.mjs`: P0's daily dispatch, O1's hourly ops check, the stall routine and
+the weekly protection check. Every one of them would have failed with a file-not-found the first
+time an agent ran it.
+
+Nothing caught this because the studio is the one repository where those paths are correct.
+
+- The mount installs a launcher at each of the four paths, one line, forwarding to the same
+  path inside the mirror. Documents keep printing one command and it is right in both kinds of
+  repository.
+- `gates.test.mjs` asserts every launcher exists and is inside the mounted file set. A launcher
+  pointing at a tool nobody mounted forwards to nothing.
+- `setup.md` step 9 now runs the four commands before anything else. They are the cheapest
+  possible check and they would have caught this in ten seconds.
+
+The alternative was to print two forms of every command and expect each agent to choose. An
+agent that has to work out its own prefix works it out wrong at the worst moment, which here is
+while holding a lock or answering a stall alert.
+
+---
+
 ## v3.0.2 — 2026-08-21
 
 Patch. The docs gate rejected a task card for naming the one path a task card is supposed to

@@ -15,6 +15,8 @@
  *   .studio-version             the pinned tag
  *   docs/_studio/               a byte-for-byte mirror of that tag
  *   docs/_studio/MANIFEST.json  sha256 per file, checked by studio-sync
+ *   tools/                      the mirror gate, and launchers for the commands
+ *                               the SOPs print — see LAUNCHERS
  *
  * A mirror rather than a submodule: weak agents lose submodules in every way
  * available — forgetting to init, committing a pointer without the content,
@@ -97,6 +99,45 @@ function installTemplate(from, to, overwrite = true) {
   console.log(`   ${to} -> ${before === null ? 'created' : before.equals(readFileSync(to)) ? 'unchanged' : 'updated'}`);
 }
 
+/**
+ * The tools every SOP, routine and role card tells an agent to type.
+ *
+ * Those documents print one command, and it has to be correct in both kinds of
+ * repository. In the studio these paths are the implementations. In a project the
+ * implementations are inside the mirror, and the mirror is verified byte for byte,
+ * so the path cannot be rewritten on the way in. Printing two forms of every
+ * command and trusting each agent to pick the right one is how the first project
+ * would have found out: file not found, on the first lock it ever took.
+ *
+ * So a project gets the path its documents name, forwarding to the mirror.
+ */
+export const LAUNCHERS = [
+  'tools/lock.mjs',
+  'tools/board/status.mjs',
+  'tools/board/stall.mjs',
+  'tools/verify-protection.mjs',
+];
+
+function installLaunchers() {
+  for (const p of LAUNCHERS) {
+    const up = '../'.repeat(p.split('/').length - 1);
+    const to = join(...p.split('/'));
+    mkdirSync(join(to, '..'), { recursive: true });
+    writeFileSync(
+      to,
+      [
+        '#!/usr/bin/env node',
+        '// Written by the mount. Forwards to the mirrored implementation, so that the',
+        '// command printed in the SOPs is the command that runs here. Do not edit: a',
+        '// re-mount overwrites it, and the logic lives upstream.',
+        `import '${up}docs/_studio/${p}';`,
+        '',
+      ].join('\n')
+    );
+  }
+  console.log(`   tools/ -> ${LAUNCHERS.length} launcher(s)`);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const vi = args.indexOf('--version');
@@ -174,6 +215,8 @@ function main() {
     // which is the half that catches a forged manifest.
     installTemplate(join(MIRROR, 'templates', 'tools', 'studio-sync.mjs'), join('tools', 'studio-sync.mjs'));
 
+    installLaunchers();
+
     // A project that has to write its own CI writes a subset of it. The first one
     // shipped without the upstream half of the mirror check and with branch
     // protection pointing at a job that did not exist, and both were invisible
@@ -198,7 +241,7 @@ function main() {
     console.log(`Mounted ${version} (${files.length} files).`);
     console.log('Next:');
     console.log('  1. node tools/studio-sync.mjs --remote');
-    console.log('  2. node docs/_studio/tools/verify-protection.mjs   (protection must require the "summary" job)');
+    console.log('  2. node tools/verify-protection.mjs   (protection must require the "summary" job)');
     return 0;
   } catch (err) {
     console.error(`Mount failed: ${err.message}`);

@@ -137,6 +137,18 @@ const table = [
 check('parses one row', parseOwnership(table).length, 1);
 check('strips bold markers', parseOwnership(table)[0].owner, 'S1');
 
+// ── launchers ─────────────────────────────────────────────────────────────
+// A launcher forwards to its own path inside the mirror. If the tool it names is
+// not mounted, the forward resolves to nothing and the command in the SOP fails
+// at the moment somebody needs it — taking a lock, or answering a stall alert.
+if (!existsSync('.studio-version') && existsSync('tools/mount.mjs')) {
+  console.log('launchers');
+  const { INCLUDE, LAUNCHERS } = await import('../../tools/mount.mjs');
+  const mounted = (p) => INCLUDE.some((i) => p === i || p.startsWith(i + '/'));
+  check('every launcher exists here', LAUNCHERS.filter((p) => !existsSync(p)), []);
+  check('every launcher is mounted', LAUNCHERS.filter((p) => !mounted(p)), []);
+}
+
 // ── this repo's own table ─────────────────────────────────────────────────
 // Only meaningful in the studio repo. In a project repo this same file runs
 // from the mirror, where the studio's table does not exist, and asserting on it
