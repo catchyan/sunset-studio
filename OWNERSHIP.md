@@ -5,8 +5,14 @@
 
 | Path glob | Owner | Note |
 |---|---|---|
-| `docs/00-charter/constitution.md` | **HUMAN** | |
-| `docs/00-charter/studio-charter.md` | **HUMAN** | |
+| `docs/00-charter/constitution.md` | **HUMAN** | Amending it needs the `human-change` label |
+| `docs/00-charter/studio-charter.md` | **HUMAN** | Amending it needs the `human-change` label |
+| `board/backlog.md` | P0 | |
+| `board/tasks/**` | P0 | |
+| `board/blockers/<TASK>.md` | TASK-AUTHOR | |
+| `board/decisions/**` | P0 | |
+| `board/andon.md` | ANYONE | Append your own entry only |
+| `evidence/<TASK>/**` | TASK-AUTHOR | Expanded against the branch's task id |
 | `docs/00-charter/glossary.md` | S1 | Process vocabulary only |
 | `docs/01-framework/**` | P0 | |
 | `docs/02-roles/**` | P0 | Each file is also a bot description |

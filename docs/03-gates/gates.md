@@ -22,7 +22,7 @@ the workflow file.
 |---|---|---|---|---|
 | G1 | Framework mirror | project | `mirror` | yes |
 | G2 | Lane | both | `lane` | yes |
-| G3 | Envelope and evidence | project | `envelope` | yes |
+| G3 | Envelope and evidence | both | `envelope` | yes |
 | G4 | Documents and specification | both | `docs` | yes |
 | G5 | Build, types, tests | project | `build` | yes |
 | G6 | Feel and art | project | `feel` | yes |
@@ -52,13 +52,23 @@ cause was a checkout setting.
 branch's bot does not own. Content is not examined; the verdict does not depend on whether
 the change was a good idea.
 
-Special owners: `HUMAN` (no bot, ever), `FRAMEWORK` (mirror; changes only alongside
-`.studio-version`), `ANYONE` (append-shared files), `SELF` (only the file named after you),
-`TASK-AUTHOR` (a `<TASK>` glob, expanded to this branch's task id).
+Special owners: `HUMAN`, `FRAMEWORK` (mirror; changes only alongside `.studio-version`),
+`ANYONE` (append-shared files), `SELF` (only the file named after you), `TASK-AUTHOR` (a
+`<TASK>` glob, expanded to this branch's task id).
 
-Crossing a lane needs two independent acts: the dispatcher lists the path in section 3 of
-the task card, and someone with write access adds the `lane-override` label. One act alone
-does nothing, because one act is something an agent can do to itself.
+Two exceptions, each needing two independent acts: the path listed in section 3 of the task
+card, plus a label. `lane-override` for another role's paths, `human-change` for `HUMAN`
+paths. One act alone does nothing, because one act is something an agent can do to itself.
+
+`HUMAN` paths need a route at all because the constitution has to be amendable, and every
+change here goes through a pull request. Without one, amending it would require an
+administrator force-push — and a rule whose own amendment procedure requires breaking the
+rules does not survive contact with a deadline.
+
+This is auditable, not preventive. Every agent currently drives the same account, so nothing
+proves who applied a label. What the mechanism buys is that both acts are timestamped in the
+pull request timeline and the gatekeeper reviews **every** labelled pull request rather than
+sampling it.
 
 ## G3 · Envelope and evidence
 
@@ -74,6 +84,15 @@ does nothing, because one act is something an agent can do to itself.
 
 The command comparison is the point of the whole gate. Without it an agent can run whatever
 passes and paste that instead, and every other check here would still be green.
+
+Deletions are judged against the ownership table as it stood on the base branch. Removing a
+file and its ownership row in one commit is the normal shape of a refactor, and reading only
+the new table calls that "unowned" — a false positive that fires on every cleanup.
+
+Some changes genuinely cannot be split: a bootstrap, a mechanical rename, a vendored import.
+Removing the size limit for those would remove it for everything, so the exception raises the
+price instead — `- Size exception: <reason>` on the card, the `large-change` label on the pull
+request, and a full review rather than a sampled one.
 
 ## G4 · Documents and specification
 

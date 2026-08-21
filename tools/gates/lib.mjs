@@ -53,6 +53,24 @@ export function changedFiles(baseRef) {
     .filter(Boolean);
 }
 
+export function deletedFiles(baseRef) {
+  return new Set(
+    git(`diff --diff-filter=D --name-only ${baseRef}...HEAD`)
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+/** The ownership table as it stood on the base branch, or null if unreadable. */
+export function baseOwnership(baseRef, table) {
+  try {
+    return parseOwnership(git(`show ${baseRef}:${table}`));
+  } catch {
+    return null;
+  }
+}
+
 export function ownershipPath() {
   return (
     process.env.OWNERSHIP_FILE ??

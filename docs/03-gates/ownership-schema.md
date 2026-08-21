@@ -58,9 +58,17 @@ task, which is the good case; the bad case is a rule that fails on the hundredth
 1. **One owner per path.** Two owners means a merge conflict nobody is responsible for.
 2. **Shared files are append-only.** `ANYONE` means adding your own line. Rewriting another
    role's line is out of lane even in an `ANYONE` file.
-3. **Overrides need two acts.** The dispatcher lists the path in section 3 of the task card,
-   and someone with write access adds the `lane-override` label. Every labelled pull request
-   is fully reviewed by the gatekeeper — not sampled.
+3. **Exceptions need two acts.** The dispatcher lists the path in section 3 of the task card,
+   and someone with write access adds a label: `lane-override` for another role's paths,
+   `human-change` for `HUMAN` paths. Every labelled pull request is fully reviewed by the
+   gatekeeper — not sampled.
+
+   Two labels rather than one, so they can be counted separately. A rising number of
+   `human-change` labels means something quite different from a rising number of overrides.
+
+   This is auditable, not preventive. Every agent currently drives the same account, so
+   nothing here proves who applied a label; what it buys is that both acts are timestamped
+   in the pull request timeline and neither can be done silently.
 4. **Wrong table, fix the table.** If the split is wrong, ask the architect to change it.
    Working around it is worse than the wrong split, because a rule that must be bypassed to
    get anything done teaches that bypassing rules is normal.

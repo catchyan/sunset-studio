@@ -24,6 +24,21 @@ jobs:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: node tools/gates/lane-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
 
+  envelope:
+    name: envelope
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: G3 envelope and evidence
+        run: node tools/gates/envelope-check.mjs "${{ github.head_ref }}" "origin/${{ github.base_ref }}"
+
   docs:
     name: docs
     runs-on: ubuntu-latest
@@ -72,13 +87,13 @@ jobs:
   summary:
     name: summary
     runs-on: ubuntu-latest
-    needs: [lane, docs, cause]
+    needs: [lane, envelope, docs, cause]
     if: always()
     steps:
       - name: Verdict
         run: |
-          echo "lane=${{ needs.lane.result }} docs=${{ needs.docs.result }} cause=${{ needs.cause.result }}"
-          for r in "${{ needs.lane.result }}" "${{ needs.docs.result }}" "${{ needs.cause.result }}"; do
+          echo "lane=${{ needs.lane.result }} envelope=${{ needs.envelope.result }} docs=${{ needs.docs.result }} cause=${{ needs.cause.result }}"
+          for r in "${{ needs.lane.result }}" "${{ needs.envelope.result }}" "${{ needs.docs.result }}" "${{ needs.cause.result }}"; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "::error::Not every gate is green. Do not merge, and do not merge as an administrator either."
               exit 1

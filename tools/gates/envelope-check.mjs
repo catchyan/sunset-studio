@@ -21,7 +21,9 @@ const MAX_DIFF_FILES = 25;
 
 // Prose and board files are naturally large and carry little risk. Applying the
 // small-steps limit to them would only teach people to split documents oddly.
-const DIFF_EXEMPT = /^(docs\/|board\/|evidence\/|assets\/|\.gitignore$|\.gitattributes$)/;
+const DIFF_EXEMPT = /^(docs\/|board\/|evidence\/|assets\/|templates\/|playbooks\/|\.gitignore$|\.gitattributes$)/;
+
+const SIZE_LABEL = 'large-change';
 
 const SECTIONS = [
   '## 1. Goal',
@@ -40,14 +42,14 @@ const BACKLOG = 'board/backlog.md';
 const fail = [];
 const warn = [];
 
-/** Command lines from a fenced block, minus comments and blanks. */
+/** Command lines from a fenced block, minus comments, fences, and blanks. */
 function commandLines(text) {
-  const fence = String(text ?? '').match(/```[a-z]*\n([\s\S]*?)```/);
+  const fence = String(text ?? '').match(/```[a-z]*\r?\n([\s\S]*?)```/);
   const body = fence ? fence[1] : String(text ?? '');
   return body
     .split('\n')
     .map((l) => l.replace(/\s+#.*$/, '').trim())
-    .filter((l) => l && !l.startsWith('#'));
+    .filter((l) => l && !l.startsWith('#') && !l.startsWith('```'));
 }
 
 function checkCard(taskId) {
@@ -144,7 +146,7 @@ function checkEvidence(taskId, card) {
   }
 }
 
-function checkDiffSize(baseRef) {
+function checkDiffSize(baseRef, card) {
   let lines = 0;
   let files = 0;
   for (const row of git(`diff --numstat ${baseRef}...HEAD`).split('\n').filter(Boolean)) {
@@ -156,13 +158,29 @@ function checkDiffSize(baseRef) {
   }
   console.log(`  code changes: ${files} file(s) / ${lines} line(s)`);
 
-  if (lines > MAX_DIFF_LINES || files > MAX_DIFF_FILES) {
-    fail.push(
-      `Diff is ${files} files / ${lines} lines, over the limit of ${MAX_DIFF_FILES} / ${MAX_DIFF_LINES}.\n` +
-        '    Past this size review degrades into skimming and clicking approve, which makes the\n' +
-        '    review gate decorative. Split the task.'
-    );
+  if (lines <= MAX_DIFF_LINES && files <= MAX_DIFF_FILES) return;
+
+  const over = `Diff is ${files} files / ${lines} lines, over the limit of ${MAX_DIFF_FILES} / ${MAX_DIFF_LINES}.`;
+
+  // Some changes genuinely cannot be split: a bootstrap, a mechanical rename, a
+  // vendored import. Removing the limit for them would remove it for everything,
+  // so the exception raises the price instead: it is declared on the card before
+  // the work, labelled by someone with write access, and reviewed in full rather
+  // than sampled.
+  const labels = (process.env.PR_LABELS ?? '').split(',').map((s) => s.trim());
+  const reason = card?.match(/^-\s*Size exception:\s*(.+)$/m)?.[1];
+  if (labels.includes(SIZE_LABEL) && reason) {
+    warn.push(`${over}\n     Declared exception: ${reason}\n     The gatekeeper reviews this in full.`);
+    return;
   }
+
+  fail.push(
+    `${over}\n` +
+      '    Past this size review degrades into skimming and clicking approve, which makes the\n' +
+      '    review gate decorative. Split the task.\n' +
+      `    If it genuinely cannot be split: add "- Size exception: <reason>" to the card and the\n` +
+      `    "${SIZE_LABEL}" label to the pull request. Both, and expect a full review.`
+  );
 }
 
 function main() {
@@ -189,7 +207,7 @@ function main() {
   const card = checkCard(taskId);
   checkCommits(taskId, baseRef);
   checkEvidence(taskId, card);
-  checkDiffSize(baseRef);
+  checkDiffSize(baseRef, card);
 
   report();
   return fail.length ? 1 : 0;

@@ -86,6 +86,23 @@ Rules the gates do not enforce are wishes, and wishes charged to every task.
 - Constitution: 20 articles to 12.
 - Board: 20 paths to 11.
 
+### Three defects the new gates found in their own rewrite
+
+★ Cause: running the gates against the rewrite itself, before pushing it.
+
+- A glob ending in `/**` also matched the bare directory path. Harmless in a diff, which
+  only ever names files, but a glob matching more than it says is one people misread.
+- Deleting a file and its ownership row in the same commit was reported as "unowned" — a
+  false positive that would have fired on every refactor anyone ever did. Deletions are now
+  judged against the table as it stood on the base branch.
+- `HUMAN`-owned paths had no legal amendment route at all, so the constitution could only be
+  changed by an administrator force-push. Added the `human-change` label, with the same
+  two-act structure as `lane-override` and a separate name so the two can be counted apart.
+
+Also added a declared exception for changes that genuinely cannot be split, since a hard cap
+with no route made the first infrastructure change impossible — the same shape of defect as
+the three above.
+
 ### Also
 
 - Skill installation path corrected to the mirror. As written, no skill would have installed.

@@ -21,7 +21,9 @@ import {
   SELF,
   TASK_AUTHOR,
   backtickedGlobs,
+  baseOwnership,
   changedFiles,
+  deletedFiles,
   globToRegex,
   ownerOf,
   ownershipPath,
@@ -32,21 +34,29 @@ import {
 } from './lib.mjs';
 
 const OVERRIDE_LABEL = 'lane-override';
+const HUMAN_LABEL = 'human-change';
 
-/**
- * An override needs two independent acts, because one act is something a bot
- * can do to itself. The label requires repository write access and lands in the
- * PR timeline; the task card entry has to be written by the task's dispatcher
- * before the work starts. Free text in a PR body was neither.
- */
-function allowedOverrides(taskId) {
-  const labels = (process.env.PR_LABELS ?? '')
+function labels() {
+  return (process.env.PR_LABELS ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!labels.includes(OVERRIDE_LABEL)) return [];
-  const lane = section(readTaskCard(taskId), '## 3. Lane');
-  return backtickedGlobs(lane);
+}
+
+/**
+ * An exception needs two independent acts, because one act is something a bot
+ * can do to itself. The label requires repository write access and lands in the
+ * PR timeline; the card entry has to be written by the dispatcher before the
+ * work starts. Free text in a PR body was neither.
+ *
+ * Not cryptographic: today every agent drives the same account, so nothing here
+ * proves who added the label. It is auditable rather than preventive — both acts
+ * are timestamped in the timeline, and the gatekeeper reviews every labelled
+ * pull request instead of sampling it.
+ */
+function declaredPaths(taskId, label) {
+  if (!labels().includes(label)) return [];
+  return backtickedGlobs(section(readTaskCard(taskId), '## 3. Lane'));
 }
 
 function main() {
@@ -70,11 +80,21 @@ function main() {
   console.log(`lane gate · bot=${botCode} · task=${taskId} · table=${table} · ${changed.length} file(s)`);
   if (changed.length === 0) return 0;
 
-  const overrides = allowedOverrides(taskId);
+  const overrides = declaredPaths(taskId, OVERRIDE_LABEL);
+  const humanChanges = declaredPaths(taskId, HUMAN_LABEL);
   const violations = [];
 
+  // A deletion is judged against the table as it stood before the change.
+  // Removing a file and its ownership row in one commit is the normal shape of a
+  // refactor, and reading only the new table calls that "unowned" — a false
+  // positive that would fire on every cleanup anyone ever does.
+  const deleted = deletedFiles(baseRef);
+  const priorRows = deleted.size ? baseOwnership(baseRef, table) : null;
+
   for (const file of changed) {
-    const row = ownerOf(file, rows, taskId);
+    const row =
+      (deleted.has(file) && priorRows ? ownerOf(file, priorRows, taskId) : null) ??
+      ownerOf(file, rows, taskId);
 
     if (!row) {
       violations.push({
@@ -84,8 +104,22 @@ function main() {
       continue;
     }
 
+    // The human has to be able to amend the constitution, and every change goes
+    // through a pull request like everything else. Without a route, the only way
+    // to amend it would be an administrator force-push — and a rule whose own
+    // amendment procedure requires breaking the rules is not a rule for long.
+    // Deliberately a separate label from lane-override, so these are countable.
     if (row.owner === HUMAN) {
-      violations.push({ file, why: 'Reserved for the human. No bot may change it, with or without an override.' });
+      if (humanChanges.some((g) => g === file || globToRegex(g).test(file))) {
+        console.log(`  human-change: ${file} — labelled and declared in ${taskId}`);
+        continue;
+      }
+      violations.push({
+        file,
+        why:
+          'Reserved for the human. Amending it needs the "human-change" label and the path\n' +
+          `      listed in section 3 of ${taskId}. The lane-override label does not apply here.`,
+      });
       continue;
     }
 
@@ -159,4 +193,4 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   }
 }
 
-export { allowedOverrides };
+export { declaredPaths };
